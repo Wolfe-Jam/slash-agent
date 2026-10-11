@@ -1,0 +1,28 @@
+{
+  "name": "slash-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "An agent for hire: quotes each coding job, books the right NVIDIA Nemotron model on Nebius Token Factory, and proves the cost with a receipt.",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Wolfe-Jam/slash-agent"
+  },
+  "dependencies": {
+    "slash-tokens": "1.7.1"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "@types/node": "^25.5.0",
+    "typescript": "^6.0.2"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

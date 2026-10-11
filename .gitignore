@@ -1,0 +1,6 @@
+node_modules/
+.env
+*.log
+# Private tooling (/pubpro etc.) stays in the private faf-skills-ops repo.
+.cursor/skills/
+.claude/skills/

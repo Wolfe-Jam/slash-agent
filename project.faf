@@ -1,0 +1,49 @@
+faf_version: "3.0"
+project:
+  name: slash-agent
+  goal: "An agent for hire: quotes each coding job, books the right NVIDIA Nemotron model on Nebius Token Factory, and proves the cost with a receipt."
+  main_language: TypeScript
+  type: library  # found: package.json main (no bin)
+stack:
+  frontend: slotignored
+  css_framework: slotignored
+  ui_library: slotignored
+  state_management: slotignored
+  backend: slotignored
+  api_type: slotignored
+  runtime: slotignored
+  database: slotignored
+  connection: slotignored
+  hosting: "Runs where you run it; inference on Nebius Token Factory"
+  build: TypeScript (tsc)
+  cicd: GitHub Actions
+  monorepo_tool: slotignored
+  package_manager: slotignored
+  workspaces: slotignored
+  admin: slotignored
+  cache: slotignored
+  search: slotignored
+  storage: slotignored
+human_context:
+  who: "Developers who hand coding jobs to an AI agent and want the cost quoted before, kept in budget, and proven after"
+  what: "An agent for hire: quotes each coding job, books the right NVIDIA Nemotron model on Nebius Token Factory, and proves the cost with a receipt."
+  why: "Agents burn frontier-model tokens on steps a smaller model can do, and nobody sees the bill until it arrives. slash-agent books the cheapest Nemotron model that meets the quality floor and proves it with a receipt."
+  where: https://github.com/Wolfe-Jam/slash-agent
+  when: "v0.1.0 (2026-10-10): Token Factory client wired into slash-tokens hire().run(); coding loop next. Nebius x NVIDIA Global AI Hackathon entry, due 2026-10-30."
+  how: "bun install; set NEBIUS_API_KEY; hire({ budget, floor }).run({ input, model, maxOutputTokens, call: nebius({ maxTokens }) })"
+monorepo:
+  packages_count: slotignored
+  build_orchestrator: slotignored
+  versioning_strategy: slotignored
+  shared_configs: slotignored
+  remote_cache: slotignored
+tech_stack:
+  - TypeScript
+  - slash-tokens
+key_files:
+  - package.json
+  - src/index.ts
+  - README.md
+  - tsconfig.json
+commands:
+  test: bun run test
