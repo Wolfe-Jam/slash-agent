@@ -1,0 +1,17 @@
+faf_version: "3.0"
+project:
+  name: cart-sample
+  goal: A tiny shopping-cart total, the sample project slash-agent works on in its demo.
+  main_language: TypeScript
+  type: library
+human_context:
+  who: Anyone trying slash-agent for the first time
+  what: total(items, couponPercent, shipping) returns an order total in cents
+  why: Small enough to read in a minute, with one real bug to fix
+  where: examples/cart in the slash-agent repo
+  when: Added 2026-10-10 for the Nebius x NVIDIA Global AI Hackathon demo
+  how: bun test
+rules:
+  - Money is in integer cents; round once, at the end of a calculation.
+  - A coupon discounts the items only, never shipping.
+  - Every behaviour change comes with a test.

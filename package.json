@@ -1,13 +1,14 @@
 {
   "name": "slash-agent",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "An agent for hire: quotes each coding job, books the right NVIDIA Nemotron model on Nebius Token Factory, and proves the cost with a receipt.",
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
     "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "demo": "bun scripts/demo.ts"
   },
   "license": "MIT",
   "repository": {
