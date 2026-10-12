@@ -21,10 +21,10 @@ An agent for hire: quotes each coding job, books the right NVIDIA Nemotron model
 - **What:** An agent for hire: quotes each coding job, books the right NVIDIA Nemotron model on Nebius Token Factory, and proves the cost with a receipt.
 - **Why:** Agents burn frontier-model tokens on steps a smaller model can do, and nobody sees the bill until it arrives. slash-agent books the cheapest Nemotron model that meets the quality floor and proves it with a receipt.
 - **Where:** https://github.com/Wolfe-Jam/slash-agent
-- **When:** v0.1.0 (2026-10-10): Token Factory client wired into slash-tokens hire().run(); coding loop next. Nebius x NVIDIA Global AI Hackathon entry, due 2026-10-30.
+- **When:** v0.2.0 (2026-10-10): the coding loop works end to end on examples/cart (plan on Ultra, edit on Super, tests pass, honest receipt); Token Factory Sandboxes next. Nebius x NVIDIA Global AI Hackathon entry, due 2026-10-30.
 - **How:** bun install; set NEBIUS_API_KEY; hire({ budget, floor }).run({ input, model, maxOutputTokens, call: nebius({ maxTokens }) })
 
 ---
 
-*STATUS: SYNC ACTIVE — 2026-10-11T01:31:55.369Z*
+*STATUS: SYNC ACTIVE — 2026-10-11T01:40:57.735Z*
 <!-- faf:end -->
