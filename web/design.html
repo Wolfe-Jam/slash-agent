@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Job colours</title>
+<meta name="description" content="How the job colours in Hire the agent were chosen: rules, options tried, and the palette in both modes.">
+<style>
+  :root { --bg:#fbfaf7; --ink:#1b1b1f; --muted:#5d5d66; --line:#e3e1db; --accent:#0e8f8f; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#141417; --ink:#ececf1; --muted:#a3a3ad; --line:#2c2c33; --accent:#00d4d4; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:40px 16px 24px; }
+  h1 { font-size:2rem; line-height:1.2; margin:0 0 8px; }
+  .lead { font-size:1.15rem; color:var(--muted); margin:0 0 24px; }
+  h2 { font-size:1.2rem; margin:36px 0 10px; }
+  table { border-collapse:collapse; width:100%; font-size:15px; }
+  td, th { border-bottom:1px solid var(--line); padding:7px 10px 7px 0; text-align:left; vertical-align:top; }
+  .dot { display:inline-block; width:14px; height:14px; border-radius:4px; vertical-align:-2px; margin-right:6px; border:1px solid rgba(128,128,128,.3); }
+  .stripes { background-image:repeating-linear-gradient(135deg, transparent 0 4px, rgba(0,0,0,.85) 4px 6px); }
+  a { color:var(--accent); }
+  .panes { display:grid; grid-template-columns:1fr 1fr; margin:16px 0 0; }
+  @media (max-width:820px) { .panes { grid-template-columns:1fr; } }
+  .pane { padding:22px 24px; }
+  .light { background:#fbfaf7; color:#1b1b1f; } .dark { background:#141417; color:#ececf1; }
+  .pane h3 { margin:0 0 10px; font-size:15px; letter-spacing:.04em; opacity:.75; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  .sw { width:104px; border-radius:10px; overflow:hidden; border:1px solid rgba(128,128,128,.25); font-size:12px; }
+  .sw .c { height:42px; } .sw .t { padding:5px 7px; } .sw .t b { display:block; font-size:13px; }
+  .card { margin:7px 0; padding:9px 12px; border-radius:10px; border:1px solid rgba(128,128,128,.25); border-left:7px solid; display:flex; align-items:center; gap:9px; font-weight:700; font-size:13px; letter-spacing:.04em; }
+  .light .card { background:#fff; } .dark .card { background:#1c1c21; }
+  .chip { font-size:11px; font-weight:800; padding:2px 7px; border-radius:999px; letter-spacing:.06em; }
+  .badge { font-size:11px; padding:1px 7px; border-radius:999px; border:1px solid currentColor; font-weight:600; letter-spacing:0; }
+  footer { max-width:760px; margin:0 auto; padding:24px 16px 56px; color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Job colours</h1>
+  <p class="lead">Every job in <a href="/">Hire the agent</a> has a colour, so you can tell a fix from a test at a glance. This is how the colours were chosen.</p>
+
+  <h2>The rules</h2>
+  <ol>
+    <li><b>The colour follows the job's type</b>, the first word of the job: <i>Fix: …</i>, <i>Add: …</i>, <i>Test: …</i>. Any new job is coloured automatically.</li>
+    <li><b>Status colours are never job colours.</b> Green means the tests passed. Red means they failed. Orange is FAF's own mark.</li>
+    <li><b>Retrying isn't a colour.</b> When the agent iterates, the card keeps the job's colour and adds <b>↻ round 2</b>: it's still the same job.</li>
+    <li><b>Borrow what people already know.</b> Where developers have a colour habit, use it.</li>
+    <li><b>Spread the hues.</b> Colours that sit close together blur at a glance and in video.</li>
+    <li><b>Readable in light and dark mode.</b> Where a colour is too pale for text (yellow on white), the text uses a darker tone of it.</li>
+  </ol>
+
+  <h2>The palette</h2>
+  <table>
+    <tr><th>Type</th><th>Colour</th><th>Why</th></tr>
+    <tr><td><b>Fix</b></td><td><span class="dot" style="background:#D63384"></span>rose</td><td>GitHub's "bug" label is red, but red already means "failed", so the nearest colour that still reads as a bug.</td></tr>
+    <tr><td><b>Add</b></td><td><span class="dot" style="background:#0E8F8F"></span>cyan</td><td>GitHub's "enhancement" label is cyan.</td></tr>
+    <tr><td><b>Test</b></td><td><span class="dot stripes" style="background-color:#F2C200"></span>yellow + black</td><td>A crash-test dummy: testing is what it's for.</td></tr>
+    <tr><td><b>Upgrade</b></td><td><span class="dot" style="background:#8250DF"></span>purple</td><td>Levelling up: purple is the "epic" tier in games.</td></tr>
+    <tr><td><b>Refactor</b></td><td><span class="dot" style="background:#57606A"></span>slate</td><td>Neutral grey: the behaviour doesn't change, only the code.</td></tr>
+    <tr><td><b>Docs</b></td><td><span class="dot" style="background:#1F6FEB"></span>blue</td><td>GitHub's "documentation" label is blue.</td></tr>
+  </table>
+
+  <h2>Options we tried</h2>
+  <table>
+    <tr><th></th><th>Palette</th><th>Verdict</th></tr>
+    <tr><td><b>A</b></td><td>cyan, blue, violet, indigo, magenta, slate</td><td>Rejected: four of the six are blues and purples, which blur together.</td></tr>
+    <tr><td><b>B</b></td><td>cyan, blue, violet, magenta, brown, slate</td><td>Better spread, but brown for Upgrade had no meaning (brown reads as "industrious").</td></tr>
+    <tr><td><b>C</b></td><td>rose, cyan, yellow + black, purple, slate, blue</td><td><b>Chosen.</b> Every colour has a reason. Yellow became possible once "iterate" stopped being amber.</td></tr>
+    <tr><td><b>C-magenta</b></td><td>Upgrade magenta, Fix moves to purple</td><td>Considered: magenta and rose are neighbours, and purple loses the "bug" feel for Fix.</td></tr>
+  </table>
+
+  <h2>In both modes, next to status</h2>
+  <p>Job colours have to stay distinct from pass and fail, side by side.</p>
+</main>
+<div class="panes" id="panes"></div>
+<footer>
+  Part of <a href="https://github.com/Wolfe-Jam/slash-agent">slash-agent</a> (MIT) · <a href="/">Hire the agent</a> · Written up in <a href="https://github.com/Wolfe-Jam/slash-agent/blob/main/docs/design/job-colours.md">docs/design/job-colours.md</a>
+</footer>
+<script>
+const C = [
+  ['Fix', 'rose', '#D63384', '#F778BA', '#fff', '#D63384', '#F778BA'],
+  ['Add', 'cyan', '#0E8F8F', '#00D4D4', '#fff', '#0E8F8F', '#00D4D4'],
+  ['Test', 'yellow + black', '#F2C200', '#F5D33A', '#111', '#8A6A00', '#F5D33A'],
+  ['Upgrade', 'purple', '#8250DF', '#A371F7', '#fff', '#8250DF', '#A371F7'],
+  ['Refactor', 'slate', '#57606A', '#8B949E', '#fff', '#57606A', '#8B949E'],
+  ['Docs', 'blue', '#1F6FEB', '#58A6FF', '#fff', '#1F6FEB', '#58A6FF'],
+];
+const pane = (mode) => {
+  const d = mode === 'dark';
+  const fill = p => d ? p[3] : p[2], ink = p => d ? p[6] : p[5];
+  const stripe = p => p[0] === 'Test' ? 'background-image:repeating-linear-gradient(135deg, transparent 0 10px, rgba(0,0,0,.85) 10px 16px);' : '';
+  const sw = p => `<div class="sw"><div class="c" style="background-color:${fill(p)};${stripe(p)}"></div><div class="t"><b>${p[0]}</b>${fill(p)}</div></div>`;
+  const chip = p => `<span class="chip" style="background:${fill(p)};color:${p[4]}">${p[0].toUpperCase()}</span>`;
+  const card = (p, label, extra = '') => `<div class="card" style="border-left-color:${fill(p)};color:${ink(p)}">${chip(p)}${label}${extra}</div>`;
+  const status = (l, dk, label) => `<div class="card" style="border-left-color:${d ? dk : l};color:${d ? dk : l}">${label}</div>`;
+  return `<div class="pane ${mode}"><h3>${d ? 'DARK MODE' : 'LIGHT MODE'}</h3>
+    <div class="row">${C.map(sw).join('')}</div>
+    ${card(C[0], 'WRITE · coupons never discount shipping')}
+    ${card(C[0], 'WRITE · coupons never discount shipping', `<span class="badge">↻ round 2</span>`)}
+    ${status('#1A7F37', '#3FB950', 'TEST · pass')}${status('#CF222E', '#F85149', 'TEST · fail')}
+    ${card(C[1], 'WRITE · free shipping over $50')}
+    ${card(C[2], 'WRITE · cover a cart with several items')}
+    ${card(C[3], 'WRITE · move to slash-tokens 1.8.1')}</div>`;
+};
+document.getElementById('panes').innerHTML = pane('light') + pane('dark');
+</script>
+</body>
+</html>
