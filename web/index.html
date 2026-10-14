@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hire the agent</title>
+<meta name="description" content="A coding agent you hire with a budget: it quotes the job, books the right NVIDIA Nemotron model on Nebius Token Factory, and proves the cost.">
+<style>
+  :root { --bg:#fbfaf7; --ink:#1b1b1f; --muted:#5d5d66; --line:#e3e1db; --card:#fff; --accent:#0e8f8f; --ok:#1a7f37; --bad:#cf222e; --warn:#9a6700; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#141417; --ink:#ececf1; --muted:#a3a3ad; --line:#2c2c33; --card:#1c1c21; --accent:#00d4d4; --ok:#3fb950; --bad:#f85149; --warn:#d29922; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:40px 16px 64px; }
+  h1 { font-size:2rem; line-height:1.2; margin:0 0 8px; }
+  .lead { font-size:1.15rem; color:var(--muted); margin:0 0 28px; }
+  h2 { font-size:1.15rem; margin:36px 0 12px; }
+  .jobs { display:grid; gap:8px; }
+  .job { display:flex; gap:10px; align-items:center; padding:12px 14px; border:1px solid var(--line); border-radius:10px; background:var(--card); cursor:pointer; }
+  .job input { accent-color:var(--accent); }
+  .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin:16px 0 0; }
+  button { padding:10px 18px; border-radius:8px; border:1px solid var(--ink); background:var(--ink); color:var(--bg); font:inherit; font-weight:600; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:default; }
+  input[type=range] { width:180px; accent-color:var(--accent); }
+  .meta { color:var(--muted); font-size:14px; }
+  .step { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin:12px 0 0; }
+  .step h3 { margin:0 0 6px; font-size:1rem; letter-spacing:.06em; }
+  .step pre { white-space:pre-wrap; margin:8px 0 0; font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; max-height:240px; overflow:auto; }
+  .ok { color:var(--ok); } .bad { color:var(--bad); } .warn { color:var(--warn); }
+  .add { color:var(--ok); } .del { color:var(--bad); }
+  table { border-collapse:collapse; font-size:14px; margin-top:8px; }
+  td, th { border-bottom:1px solid var(--line); padding:6px 10px 6px 0; text-align:left; }
+  code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.9em; }
+  footer { margin-top:48px; color:var(--muted); font-size:14px; }
+  a { color:var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Hire the agent</h1>
+  <p class="lead">A coding agent you hire with a budget. It quotes the job, books the right NVIDIA Nemotron model on Nebius Token Factory for each step, and proves the cost with a receipt.</p>
+
+  <h2>The project</h2>
+  <p class="meta">A small shop cart: <code>total()</code> adds up items, a percentage coupon and shipping, with tests. The agent works on a copy; nothing is kept.</p>
+
+  <h2>Pick a job</h2>
+  <div class="jobs" id="jobs"><p class="meta">Loading…</p></div>
+  <div class="row">
+    <label>Budget <input type="range" id="budget" min="1" max="5" value="2"> <b id="budgetLabel">2¢</b></label>
+    <button id="hire">Hire</button>
+  </div>
+  <p class="meta" id="daily"></p>
+
+  <div id="run"></div>
+
+  <footer>
+    PLAN on Nemotron 3 Ultra · WRITE on the smallest Nemotron the job allows · TEST with the project's own tests · ITERATE until they pass, inside the budget.
+    Every run is real and billed by Token Factory. Source: <a href="https://github.com/Wolfe-Jam/slash-agent">github.com/Wolfe-Jam/slash-agent</a> (MIT).
+  </footer>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const usd = n => n == null ? '–' : '$' + Number(n).toFixed(6);
+
+$('budget').oninput = () => { $('budgetLabel').textContent = $('budget').value + '¢'; };
+
+fetch('/api/jobs').then(r => r.json()).then(({ jobs, dailyCap, spentToday }) => {
+  $('jobs').innerHTML = jobs.map((j, i) =>
+    `<label class="job"><input type="radio" name="job" value="${esc(j.id)}" ${i === 0 ? 'checked' : ''}> ${esc(j.title)}</label>`).join('');
+  $('daily').textContent = `Today's demo budget: $${spentToday.toFixed(4)} of $${dailyCap.toFixed(2)} used.`;
+});
+
+function card(title, cls, body) {
+  const div = document.createElement('div');
+  div.className = 'step';
+  div.innerHTML = `<h3 class="${cls}">${title}</h3>${body}`;
+  $('run').appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function booking(e) {
+  const swap = e.booked && e.booked !== e.requested;
+  return `<p class="meta">Asked for <code>${esc(e.requested)}</code>${swap ? ` · booked <code>${esc(e.booked)}</code>` : ''} · quoted up to ${usd(e.quoted)} · billed ${usd(e.billed)}` +
+    (e.tokens ? ` · ${e.tokens.in} in / ${e.tokens.out} out${e.tokens.reasoning ? ` (${e.tokens.reasoning} reasoning)` : ''}` : '') + `</p>`;
+}
+
+const handlers = {
+  start: e => card('HIRED', '', `<p>${esc(e.job)} · budget ${Math.round(e.budget * 100)}¢</p>`),
+  plan: e => card('PLAN', '', booking(e) + `<pre>${esc(e.plan)}</pre>`),
+  write: e => card(e.round > 1 ? `ITERATE · WRITE, round ${e.round}` : 'WRITE', e.round > 1 ? 'warn' : '',
+    booking(e) + `<p>${e.files.length ? 'Files: ' + e.files.map(f => `<code>${esc(f)}</code>`).join(', ') : 'No files in the reply; asking again.'}</p>`),
+  test: e => card(e.passed ? 'TEST · pass' : 'TEST · fail', e.passed ? 'ok' : 'bad', e.passed ? '' : `<pre>${esc(e.output)}</pre>`),
+  done: e => {
+    const d = e.diffs.map(f => `<p><code>${esc(f.file)}</code></p><pre>${f.added.map(l => `<span class="add">+ ${esc(l)}</span>`).join('\n')}\n${f.removed.map(l => `<span class="del">- ${esc(l)}</span>`).join('\n')}</pre>`).join('');
+    const r = e.receipt;
+    card(e.done ? 'DONE' : 'NOT DONE', e.done ? 'ok' : 'bad', `<p>${esc(e.reason)}</p>${d}
+      <h3 style="margin-top:14px">RECEIPT</h3>
+      <table>
+        <tr><td>Billed by Token Factory</td><td><b>${usd(r.spent)}</b></td></tr>
+        <tr><td>On the models asked for</td><td>${usd(r.baseline)}</td></tr>
+        <tr><td>Saved</td><td class="ok"><b>${usd(r.saved)}</b></td></tr>
+        <tr><td>Agent's fee (${Math.round(r.fee.rate * 100)}% of savings)</td><td>${usd(r.fee.amount)}, waived</td></tr>
+        <tr><td>Budget left</td><td>${usd(r.remaining)}</td></tr>
+        <tr><td>Billed more than quoted?</td><td>${r.underReported ? '<span class="bad">yes</span>' : 'no'}</td></tr>
+      </table>`);
+  },
+  error: e => card('STOPPED', 'bad', `<p>${esc(e.message)}</p>`),
+};
+
+$('hire').onclick = async () => {
+  const job = document.querySelector('input[name=job]:checked')?.value;
+  $('run').innerHTML = '';
+  $('hire').disabled = true;
+  try {
+    const res = await fetch('/api/hire', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, budget: $('budget').value / 100 }) });
+    if (!res.ok) { const e = await res.json(); card('NOT NOW', 'warn', `<p>${esc(e.error)}</p>`); return; }
+    const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf('\n\n')) >= 0) {
+        const line = buf.slice(0, i); buf = buf.slice(i + 2);
+        if (line.startsWith('data: ')) { const e = JSON.parse(line.slice(6)); handlers[e.kind]?.(e); }
+      }
+    }
+  } catch { card('STOPPED', 'bad', '<p>Lost the connection. Try again.</p>'); }
+  finally { $('hire').disabled = false; }
+};
+</script>
+</body>
+</html>

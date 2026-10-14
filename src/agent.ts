@@ -41,7 +41,15 @@ export interface JobOptions {
   runTests?: (dir: string) => TestRun;
   /** Progress lines. Default: none. */
   log?: (line: string) => void;
+  /** Each step as it happens, for a live view. Default: none. */
+  onEvent?: (event: JobEvent) => void;
 }
+
+/** One step of the loop, as it happens. */
+export type JobEvent =
+  | { kind: 'plan'; decision: Decision; receipt?: Receipt; plan: string }
+  | { kind: 'write'; round: number; decision: Decision; receipt?: Receipt; files: string[] }
+  | { kind: 'test'; round: number; passed: boolean; output: string };
 
 export interface TestRun {
   passed: boolean;
@@ -176,6 +184,7 @@ export async function runJob(opts: JobOptions): Promise<JobResult> {
   const callFor = opts.callFor ?? ((s: StepPolicy) => nebius({ maxTokens: s.maxOutputTokens, reasoning: s.reasoning } satisfies NebiusOptions));
   const runTests = opts.runTests ?? bunTest;
   const log = opts.log ?? (() => {});
+  const emit = opts.onEvent ?? (() => {});
 
   if (!existsSync(opts.projectDir)) throw new Error(`No project at ${opts.projectDir}`);
   const workDir = mkdtempSync(join(tmpdir(), 'slash-agent-'));
@@ -205,8 +214,9 @@ export async function runJob(opts: JobOptions): Promise<JobResult> {
   ]);
   steps.push({ step: 'plan', round: 0, decision: planJob.decision, receipt: planJob.receipt });
   log(`plan  ${describe(planJob.decision)}`);
-  if (!planJob.receipt) return finish(false, `plan blocked: ${planJob.decision.reason}`);
   const planText = planJob.output ?? '';
+  emit({ kind: 'plan', decision: planJob.decision, receipt: planJob.receipt, plan: planText });
+  if (!planJob.receipt) return finish(false, `plan blocked: ${planJob.decision.reason}`);
 
   // 2. Edit → test, until the tests pass or the rounds run out
   let feedback = '';
@@ -223,6 +233,7 @@ export async function runJob(opts: JobOptions): Promise<JobResult> {
     if (!editJob.receipt) return finish(false, `edit blocked: ${editJob.decision.reason}`, tests);
 
     const files = parseFiles(editJob.output ?? '');
+    emit({ kind: 'write', round, decision: editJob.decision, receipt: editJob.receipt, files: files.map(f => f.path) });
     if (files.length === 0) {
       feedback = `\n\nYour last reply had no files in the required format. Reply only with === FILE: … === / === END === blocks.`;
       continue;
@@ -231,6 +242,7 @@ export async function runJob(opts: JobOptions): Promise<JobResult> {
 
     tests = runTests(workDir);
     log(`test  ${tests.passed ? 'pass' : 'fail'}`);
+    emit({ kind: 'test', round, passed: tests.passed, output: tests.output });
     if (tests.passed) return finish(true, `tests pass after round ${round}`, tests);
     feedback = `\n\nThe tests failed after your change:\n${tests.output}\nFix it.`;
   }

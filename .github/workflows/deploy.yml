@@ -1,0 +1,65 @@
+# Deploy the "Hire the agent" demo to Google Cloud Run on every push to main.
+# Keyless: GitHub's OIDC token is exchanged through Workload Identity Federation,
+# which trusts only Wolfe-Jam/slash-agent on refs/heads/main. The Nebius key is
+# a Secret Manager secret, readable only by the app's runtime identity.
+name: Deploy demo
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PROJECT: slash-agent-demo
+  REGION: us-central1
+  IMAGE: us-central1-docker.pkg.dev/slash-agent-demo/slash/agent-web
+
+jobs:
+  # Pull requests: prove the image builds. Nothing is pushed or deployed.
+  build:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f web/Dockerfile -t agent-web .
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun test
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/524037477356/locations/global/workloadIdentityPools/github/providers/github-com
+          service_account: github-deployer@slash-agent-demo.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@v2
+      - run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+      - run: |
+          docker build -f web/Dockerfile -t $IMAGE:${GITHUB_SHA::7} .
+          docker push $IMAGE:${GITHUB_SHA::7}
+      - id: deploy
+        run: |
+          gcloud run deploy agent-web --image $IMAGE:${GITHUB_SHA::7} \
+            --project $PROJECT --region $REGION \
+            --service-account agent-web@slash-agent-demo.iam.gserviceaccount.com \
+            --allow-unauthenticated \
+            --set-secrets NEBIUS_API_KEY=nebius-api-key:latest \
+            --set-env-vars SPEND_BUCKET=slash-agent-demo-spend,DAILY_CAP=0.5 \
+            --max-instances 1 --concurrency 20 --timeout 300 --memory 1Gi --quiet
+          echo "url=$(gcloud run services describe agent-web --project $PROJECT --region $REGION --format='value(status.url)')" >> "$GITHUB_OUTPUT"
+      - name: Health check
+        run: curl -fsS "${{ steps.deploy.outputs.url }}/health"
