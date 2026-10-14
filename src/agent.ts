@@ -233,7 +233,7 @@ export async function runJob(opts: JobOptions): Promise<JobResult> {
     if (!editJob.receipt) return finish(false, `edit blocked: ${editJob.decision.reason}`, tests);
 
     const files = parseFiles(editJob.output ?? '');
-    emit({ kind: 'write', round, decision: editJob.decision, receipt: editJob.receipt, files: files.map(f => f.path) });
+    emit({ kind: 'write', round, decision: editJob.decision, receipt: editJob.receipt, files: [...new Set(files.map(f => f.path))] });
     if (files.length === 0) {
       feedback = `\n\nYour last reply had no files in the required format. Reply only with === FILE: … === / === END === blocks.`;
       continue;
