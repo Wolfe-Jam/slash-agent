@@ -37,7 +37,7 @@
   .meta { color:var(--muted); font-size:14px; }
   .step { background:var(--card); border:1px solid var(--line); border-left:6px solid var(--c, var(--line)); border-radius:10px; padding:14px 16px; margin:12px 0 0; }
   .step h3 { margin:0 0 6px; font-size:1rem; letter-spacing:.06em; color:var(--c-ink, inherit); }
-  .step.ok { --c:var(--ok); --c-ink:var(--ok); } .step.bad { --c:var(--bad); --c-ink:var(--bad); }
+  .step.st-ok { --c:var(--ok); --c-ink:var(--ok); } .step.st-bad { --c:var(--bad); --c-ink:var(--bad); }
   .ticks { display:flex; justify-content:space-between; width:180px; font-size:12px; color:var(--muted); margin-left:58px; }
   .step pre { white-space:pre-wrap; margin:8px 0 0; font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; max-height:240px; overflow:auto; }
   .ok { color:var(--ok); } .bad { color:var(--bad); }
@@ -77,6 +77,8 @@
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// The plan is model-written Markdown: escape it, then render only **bold** and `code`.
+const md = s => esc(s).replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>').replace(/`([^`\n]+)`/g, '<code>$1</code>');
 const usd = n => n == null ? '–' : '$' + Number(n).toFixed(6);
 
 $('budget').oninput = () => { $('budgetLabel').textContent = $('budget').value + '¢'; };
@@ -104,14 +106,14 @@ function booking(e) {
 
 const handlers = {
   start: e => { jobType = e.type; card(`<span class="chip">${esc(e.type.toUpperCase())}</span> HIRED`, '', `<p>${esc(e.job)} · budget ${Math.round(e.budget * 100)}¢</p>`); },
-  plan: e => card('PLAN', '', booking(e) + `<pre>${esc(e.plan)}</pre>`),
+  plan: e => card('PLAN', '', booking(e) + `<pre>${md(e.plan)}</pre>`),
   write: e => card(e.round > 1 ? `ITERATE · WRITE<span class="badge">↻ round ${e.round}</span>` : 'WRITE', '',
     booking(e) + `<p>${e.files.length ? 'Files: ' + e.files.map(f => `<code>${esc(f)}</code>`).join(', ') : 'No files in the reply; asking again.'}</p>`),
-  test: e => card(e.passed ? 'TEST · pass' : 'TEST · fail', e.passed ? 'ok' : 'bad', e.passed ? '' : `<pre>${esc(e.output)}</pre>`),
+  test: e => card(e.passed ? 'TEST · pass' : 'TEST · fail', e.passed ? 'st-ok' : 'st-bad', e.passed ? '' : `<pre>${esc(e.output)}</pre>`),
   done: e => {
     const d = e.diffs.map(f => `<p><code>${esc(f.file)}</code></p><pre>${f.added.map(l => `<span class="add">+ ${esc(l)}</span>`).join('\n')}\n${f.removed.map(l => `<span class="del">- ${esc(l)}</span>`).join('\n')}</pre>`).join('');
     const r = e.receipt;
-    card(e.done ? 'DONE' : 'NOT DONE', e.done ? 'ok' : 'bad', `<p>${esc(e.reason)}</p>${d}
+    card(e.done ? 'DONE' : 'NOT DONE', e.done ? 'st-ok' : 'st-bad', `<p>${esc(e.reason)}</p>${d}
       <h3 style="margin-top:14px">RECEIPT</h3>
       <table>
         <tr><td>Billed by Token Factory</td><td><b>${usd(r.spent)}</b></td></tr>
@@ -122,7 +124,7 @@ const handlers = {
         <tr><td>Billed more than quoted?</td><td>${r.underReported ? '<span class="bad">yes</span>' : 'no'}</td></tr>
       </table>`);
   },
-  error: e => card('STOPPED', 'bad', `<p>${esc(e.message)}</p>`),
+  error: e => card('STOPPED', 'st-bad', `<p>${esc(e.message)}</p>`),
 };
 
 $('hire').onclick = async () => {
@@ -143,7 +145,7 @@ $('hire').onclick = async () => {
         if (line.startsWith('data: ')) { const e = JSON.parse(line.slice(6)); handlers[e.kind]?.(e); }
       }
     }
-  } catch { card('STOPPED', 'bad', '<p>Lost the connection. Try again.</p>'); }
+  } catch { card('STOPPED', 'st-bad', '<p>Lost the connection. Try again.</p>'); }
   finally { $('hire').disabled = false; }
 };
 </script>
