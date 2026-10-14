@@ -84,6 +84,22 @@ receipt.saved     // dollars saved against Ultra
 
 [`web/`](web/) is the page: one Bun server, no AI calls of its own beyond the agent's. It deploys from this repository's `main` to Cloud Run with no stored GitHub secret (Workload Identity Federation trusts only this repository's `main`). The Token Factory key is a Secret Manager secret only the app can read. A Cloud Storage counter enforces the daily cap; an uptime check watches `/health`.
 
+Everything is in this repository: what runs ([`web/Dockerfile`](web/Dockerfile)), how it deploys ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)), and the one-time Google Cloud setup ([`deploy/gcp-setup.sh`](deploy/gcp-setup.sh): project, budget alert, registry, keyless login, least-privilege identities, the key in Secret Manager, the spend counter).
+
+## From hackathon to enterprise
+
+Built small on purpose. Each piece has a clear next step at scale:
+
+| Today | At scale |
+|---|---|
+| Three preset jobs on a sample project | Jobs on a team's own repositories, opened from issues or merge requests |
+| Tests on an isolated copy in the container | **Token Factory Sandboxes** for every run: isolated microVMs, checkpoint and branch to try fixes in parallel |
+| One job at a time, one instance | A queue (Cloud Tasks) feeding many workers |
+| A daily cap in a Cloud Storage file | Budgets per team and per project in a transactional store, with alerts |
+| One budget and one floor per job | Policies per team: which models, which quality floor, how much a month |
+| Receipts on the page | Receipts exported to **BigQuery**: spend and savings per team, per model, per month |
+| A `gcloud` setup script | **Terraform** or Google's **Infrastructure Manager**, with staging and production projects |
+
 ## We started here
 
 This repository was created on 2026-10-10. Everything in it is new work for the hackathon. It builds on one existing open-source package:
