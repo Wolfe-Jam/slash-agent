@@ -148,13 +148,13 @@ export function bunTest(dir: string): TestRun {
   return { passed: r.status === 0, output };
 }
 
-const PLAN_SYSTEM = `You are the planner of a coding agent. Read the project and the task. Reply with a short numbered plan: which files to change, what to change in each, and which test proves it. Follow the project's rules. No code.`;
+const PLAN_SYSTEM = `You are the planner of a coding agent. Read the project and the task. Reply with a short numbered plan: which files to change, what to change in each, and which test proves it. Follow the project's rules. Plan only what the task needs. Don't plan fixes the task doesn't ask for, even when the code breaks one of the project's rules: mention them in one line at the end starting "Note:" instead. No code.`;
 
 const EDIT_SYSTEM = `You are the editor of a coding agent. Make the change the plan describes. Reply with every file you change or add, each in full, in exactly this format and nothing else:
 === FILE: relative/path ===
 <the whole file>
 === END ===
-Keep the project's style. Add or update tests so they prove the change.`;
+Keep the project's style. Add or update tests so they prove the change. Change only what the task needs; leave unrelated code and behaviour as it is, even if it looks wrong.`;
 
 const round6 = (n: number) => Math.round(n * 1_000_000) / 1_000_000;
 
