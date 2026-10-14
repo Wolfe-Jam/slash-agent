@@ -27,7 +27,7 @@ describe('nebius() — a CallModel for hire().run()', () => {
   it('sends the Token Factory ID, the cap, reasoning off by default, and the key', async () => {
     const sent: Sent[] = [];
     const call = nebius({ apiKey: 'k', maxTokens: 200, fetch: stub([ok()], sent) });
-    const res = await call('nemotron-3.5-lightning', 'hello');
+    const res = await call('nemotron-3.5-lightning', 'hello', {});
     expect(res).toEqual({ output: 'ok', usage: { prompt_tokens: 23, completion_tokens: 2 } });
     expect(sent[0].url).toBe('https://api.tokenfactory.nebius.com/v1/chat/completions');
     expect(sent[0].auth).toBe('Bearer k');
@@ -39,10 +39,16 @@ describe('nebius() — a CallModel for hire().run()', () => {
     });
   });
 
+  it('the cap hire().run() passes for the call wins over the fallback', async () => {
+    const sent: Sent[] = [];
+    await nebius({ apiKey: 'k', maxTokens: 200, fetch: stub([ok()], sent) })('nemotron-3-nano', 'hi', { maxOutputTokens: 64 });
+    expect(sent[0].body.max_tokens).toBe(64);
+  });
+
   it('reasoning: true lets Nemotron think; messages pass through', async () => {
     const sent: Sent[] = [];
     const msgs = [{ role: 'system', content: 'Plan first.' }, { role: 'user', content: 'Fix the bug.' }];
-    await nebius({ apiKey: 'k', reasoning: true, fetch: stub([ok()], sent) })('nemotron-3-ultra', msgs);
+    await nebius({ apiKey: 'k', reasoning: true, fetch: stub([ok()], sent) })('nemotron-3-ultra', msgs, {});
     expect(sent[0].body.chat_template_kwargs).toEqual({ enable_thinking: true });
     expect(sent[0].body.messages).toEqual(msgs);
     expect(sent[0].body).not.toHaveProperty('max_tokens');
@@ -59,25 +65,25 @@ describe('nebius() — a CallModel for hire().run()', () => {
       ]),
       sleep: async ms => { waits.push(ms); },
     });
-    expect((await call('nemotron-3-nano', 'hi')).output).toBe('ok');
+    expect((await call('nemotron-3-nano', 'hi', {})).output).toBe('ok');
     expect(waits).toEqual([2000, 2000]);
   });
 
   it('gives up after maxRetries; never retries a 4xx other than 429', async () => {
     const sleep = async () => {};
     const many = Array.from({ length: 4 }, () => new Response('busy', { status: 429 }));
-    await expect(nebius({ apiKey: 'k', maxRetries: 3, fetch: stub(many), sleep })('nemotron-3-nano', 'hi')).rejects.toThrow('Token Factory 429');
+    await expect(nebius({ apiKey: 'k', maxRetries: 3, fetch: stub(many), sleep })('nemotron-3-nano', 'hi', {})).rejects.toThrow('Token Factory 429');
     const sent: Sent[] = [];
-    await expect(nebius({ apiKey: 'k', fetch: stub([new Response('bad', { status: 400 })], sent), sleep })('nemotron-3-nano', 'hi')).rejects.toBeInstanceOf(NebiusError);
+    await expect(nebius({ apiKey: 'k', fetch: stub([new Response('bad', { status: 400 })], sent), sleep })('nemotron-3-nano', 'hi', {})).rejects.toBeInstanceOf(NebiusError);
     expect(sent).toHaveLength(1);
   });
 
   it('refuses a model Token Factory does not serve, and a missing key', async () => {
-    await expect(nebius({ apiKey: 'k', fetch: stub([]) })('claude-opus-5', 'hi')).rejects.toThrow('Not a Token Factory model');
+    await expect(nebius({ apiKey: 'k', fetch: stub([]) })('claude-opus-5', 'hi', {})).rejects.toThrow('Not a Token Factory model');
     const saved = process.env.NEBIUS_API_KEY;
     delete process.env.NEBIUS_API_KEY;
     try {
-      await expect(nebius({ fetch: stub([]) })('nemotron-3-nano', 'hi')).rejects.toThrow('No Nebius API key');
+      await expect(nebius({ fetch: stub([]) })('nemotron-3-nano', 'hi', {})).rejects.toThrow('No Nebius API key');
     } finally {
       if (saved !== undefined) process.env.NEBIUS_API_KEY = saved;
     }

@@ -7,7 +7,7 @@
  * maxOutputTokens (the quote's ceiling), and retries rate limits and server
  * errors with backoff.
  */
-import type { CallModel, Message, Usage } from 'slash-tokens';
+import type { CallModel, CallOptions, Message, Usage } from 'slash-tokens';
 
 export const NEBIUS_BASE_URL = 'https://api.tokenfactory.nebius.com/v1';
 
@@ -23,7 +23,7 @@ export interface NebiusOptions {
   /** Token Factory API key. Default: process.env.NEBIUS_API_KEY. */
   apiKey?: string;
   baseUrl?: string;
-  /** Cap on output tokens for each call: pass the job's maxOutputTokens. */
+  /** Fallback cap on output tokens. hire().run() passes each call its own cap, which wins. */
   maxTokens?: number;
   /**
    * Nemotron reasons before it answers unless told not to, and reasoning
@@ -56,14 +56,17 @@ function retryDelayMs(res: Response, attempt: number): number {
   return 1000 * 2 ** attempt;
 }
 
+/** A Token Factory call. Works as hire().run()'s CallModel; the cap is optional when called directly. */
+export type NebiusCall = (model: string, input: string | Message[], call?: Partial<CallOptions>) => ReturnType<CallModel>;
+
 /** A CallModel for hire().run() that sends each job to Token Factory. */
-export function nebius(opts: NebiusOptions = {}): CallModel {
+export function nebius(opts: NebiusOptions = {}): NebiusCall {
   const doFetch = opts.fetch ?? fetch;
   const sleep = opts.sleep ?? defaultSleep;
   const baseUrl = opts.baseUrl ?? NEBIUS_BASE_URL;
   const maxRetries = opts.maxRetries ?? 3;
 
-  return async (model: string, input: string | Message[]) => {
+  return async (model: string, input: string | Message[], call: Partial<CallOptions> = {}) => {
     const apiKey = opts.apiKey ?? process.env.NEBIUS_API_KEY;
     if (!apiKey) throw new NebiusError('No Nebius API key: set NEBIUS_API_KEY or pass apiKey', 401);
     const id = NEBIUS_MODEL_IDS[model];
@@ -74,7 +77,8 @@ export function nebius(opts: NebiusOptions = {}): CallModel {
       messages: typeof input === 'string' ? [{ role: 'user', content: input }] : input,
       chat_template_kwargs: { enable_thinking: opts.reasoning ?? false },
     };
-    if (opts.maxTokens !== undefined) body.max_tokens = opts.maxTokens;
+    const maxTokens = call.maxOutputTokens ?? opts.maxTokens;
+    if (maxTokens !== undefined) body.max_tokens = maxTokens;
     if (opts.temperature !== undefined) body.temperature = opts.temperature;
 
     for (let attempt = 0; ; attempt++) {
