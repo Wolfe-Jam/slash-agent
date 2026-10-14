@@ -24,7 +24,7 @@ const DESIGN = readFileSync(join(import.meta.dir, 'design.html'), 'utf8');
 /** Job types and their colours: see docs/design/job-colours.md and /design. */
 export const JOBS = [
   { id: 'coupon', type: 'fix', title: 'Fix: coupons discount the items, never shipping', task: 'Coupons should discount the items, never shipping. Fix total() and add a test that proves it.' },
-  { id: 'free-shipping', type: 'add', title: 'Add: free shipping when the items total $50 or more', task: 'Shipping should be free when the items total $50.00 (5000 cents) or more. Change total() and add tests for just under and exactly at $50.' },
+  { id: 'free-shipping', type: 'add', title: 'Add: free shipping when the items total $50 or more', task: 'Shipping should be free when the items total $50.00 (5000 cents) or more. Change total() and add tests for just under and exactly at $50. Leave the coupon calculation as it is.' },
   { id: 'multi-item', type: 'test', title: 'Test: cover a cart with several items and quantities', task: 'Add tests for total() with several different items and quantities (no coupon), checking the exact total in cents. Do not change total().' },
 ] as const;
 
