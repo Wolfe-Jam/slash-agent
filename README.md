@@ -116,6 +116,38 @@ This repository was created on 2026-10-10. Everything in it is new work for the 
 - **slash-agent 0.1 → 0.2** (Oct 10): the Token Factory client, then the full loop on the sample project.
 - **Hire the agent** (Oct 14): the live demo on Google Cloud Run.
 
+## Feedback on Nebius Token Factory and NVIDIA Nemotron
+
+We built slash-agent on Token Factory from Oct 10 to Oct 29: a coding agent that quotes each job, books the right Nemotron model for each step, and reconciles every call against what Token Factory bills. Here's what we found, with what would help.
+
+### What worked well
+
+- **OpenAI-compatible API.** Our client is a plain `fetch` to `/v1/chat/completions`; no SDK needed.
+- **Usage on every response.** Every reply carries `usage`, including `prompt_cache_hit_tokens`, so we could reconcile each call to the bill. Our receipts never came in under the bill across our test runs.
+- **Rate limits that grow with you.** Limits scale up automatically (up to 20×) when usage nears them, and 429s carry `Retry-After`, so polite retries were easy.
+- **Cheap enough to demo for real.** A full plan → write → test job costs about $0.003; a public demo with a $0.50 daily cap can run for months on the hackathon credit.
+- **Nemotron quality at the small end.** Nemotron 3 Super wrote correct code and tests in round 1 on every job in our demo, at about a third of Ultra's cost for that step.
+
+### What would help
+
+1. **Reasoning is on by default, and billed as output.** Nemotron reasons before answering unless `chat_template_kwargs: {enable_thinking: false}` (or `reasoning_effort: "none"`) is sent. Reasoning tokens are billed as output, so a short task can cost several times what the visible answer suggests. *Suggestion:* make the default explicit in the model card and the quickstart, and show reasoning tokens as a separate line in the usage dashboard.
+
+2. **Model IDs follow different patterns.** The four Nemotron IDs we used are `nvidia/Nemotron-3-Ultra-550b-a55b`, `nvidia/nemotron-3-super-120b-a12b`, `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` and `nvidia/Nemotron-3_5-Lightning`: different casing, a repeated `NVIDIA-` prefix on one, and an underscore for "3.5" on another. We hard-coded each one after checking. *Suggestion:* one naming scheme, or short stable aliases (`nemotron-3-super`) alongside the full IDs.
+
+3. **Hidden request framing tokens.** Billed input is higher than the message content: we measured **16 tokens for a one-message request, plus about 7 per extra message**, on real bills (Nemotron 3.5 Lightning and 3 Nano). Our first quotes counted content only and came in under the bill (12 quoted, 23 billed). *Suggestion:* document the chat template's framing cost per model, or offer a token-count endpoint that returns exactly what will be billed.
+
+4. **Counting tokens before a call.** To quote a job we count tokens locally with NVIDIA's own tokenizer from Hugging Face (all four Nemotron models share it). *Suggestion:* link the exact tokenizer revision from each model card, so tools can count the same way Token Factory bills.
+
+5. **Sandboxes are what agents need; access is gated.** Isolated microVMs with checkpoint and branch fit a coding agent's test-and-retry loop exactly. Access is a beta request form, so we built and shipped with tests running in our own container while we wait. *Suggestion:* open Sandboxes to hackathon entrants by default, or make the beta form part of hackathon onboarding.
+
+6. **Three sign-ups to get started.** Joining took three separate steps: a Devpost account, a Nebius Token Factory account, and then the hackathon registration that links the two (and unlocks the credits). It's one-time, but it's the first thing every entrant meets. *Suggestion:* one flow, where registering on Devpost creates or links the Token Factory account and applies the credits in the same step.
+
+7. **Usage dashboard precision.** At hackathon scale every line reads "< $0.01" in the default rounded view. *Suggestion:* default to full precision when totals are small, so builders can see per-model costs from day one.
+
+### Nebius AI Cloud
+
+We used Token Factory only, not AI Cloud's compute, so we have no AI Cloud feedback to give.
+
 ## Tests
 
 ```bash
