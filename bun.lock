@@ -5,7 +5,7 @@
     "": {
       "name": "slash-agent",
       "dependencies": {
-        "slash-tokens": "1.7.1",
+        "slash-tokens": "1.8.1",
       },
       "devDependencies": {
         "@types/bun": "^1.4.2",
@@ -21,7 +21,7 @@
 
     "bun-types": ["bun-types@1.4.2", "", { "dependencies": { "@types/node": "*" } }, "sha512-bxV1FgK7yBIzjRe5zBozIM4Bem11ZJcCXSrjWRG3YWLt8yFDePu4cLjpebO8OvPeIE9trbyPF4fuj3Cia4Fj3w=="],
 
-    "slash-tokens": ["slash-tokens@1.7.1", "", { "bin": { "slash-tokens": "dist/cli.js" } }, "sha512-qe7BChE3dhef0p9sRlv8MElT3M7gxSwmLz6DsQBXA9oVZXyblY25TR27pfM9Hrvph5a3e3hjt/bl9zBuyzy92w=="],
+    "slash-tokens": ["slash-tokens@1.8.1", "", { "bin": { "slash-tokens": "dist/cli.js" } }, "sha512-DrVgDWT9JI31m/8g0JlMB4q4NI70AcwiU73prvQbPk6/x/juXkg/y+F5BGTnclEgXUHJl6XjJWBiMK+u+xYMXQ=="],
 
     "typescript": ["typescript@6.0.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 
