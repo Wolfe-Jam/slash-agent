@@ -29,7 +29,7 @@
   h2 { font-size:1.15rem; margin:36px 0 12px; }
   .jobs { display:grid; gap:8px; }
   .job { display:flex; gap:10px; align-items:center; padding:12px 14px; border:1px solid var(--line); border-left:6px solid var(--c, var(--line)); border-radius:10px; background:var(--card); cursor:pointer; }
-  .job input { accent-color:var(--accent); }
+  .job input { accent-color:var(--c, var(--accent)); }
   .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin:16px 0 0; }
   button { padding:10px 18px; border-radius:8px; border:1px solid var(--ink); background:var(--ink); color:var(--bg); font:inherit; font-weight:600; cursor:pointer; }
   button:disabled { opacity:.5; cursor:default; }
@@ -84,7 +84,7 @@ $('budget').oninput = () => { $('budgetLabel').textContent = $('budget').value +
 fetch('/api/jobs').then(r => r.json()).then(({ jobs, dailyCap, spentToday }) => {
   $('jobs').innerHTML = jobs.map((j, i) =>
     `<label class="job t-${esc(j.type)}"><input type="radio" name="job" value="${esc(j.id)}" ${i === 0 ? 'checked' : ''}> <span class="chip">${esc(j.type.toUpperCase())}</span> ${esc(j.title.replace(/^\w+:\s*/, ''))}</label>`).join('');
-  $('daily').textContent = `Today's demo budget: $${spentToday.toFixed(4)} of $${dailyCap.toFixed(2)} used.`;
+  $('daily').textContent = `Demo spend today: $${spentToday.toFixed(4)} of the $${dailyCap.toFixed(2)} daily cap.`;
 });
 
 let jobType = '';
