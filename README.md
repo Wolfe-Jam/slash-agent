@@ -31,7 +31,7 @@ TEST    pass, round 1
 RECEIPT spent $0.003573 · on the models asked for $0.006536 · saved $0.002963 · billed more than quoted: no
 ```
 
-The demo runs preset jobs only (no free text), one job at a time, with a daily cap of $0.50.
+The demo runs preset jobs only (no free text), one job at a time, with a daily cap of $0.50. Each job type has its own colour: [how the colours were chosen](docs/design/job-colours.md).
 
 ## Run it yourself
 

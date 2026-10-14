@@ -6,9 +6,21 @@
 <title>Hire the agent</title>
 <meta name="description" content="A coding agent you hire with a budget: it quotes the job, books the right NVIDIA Nemotron model on Nebius Token Factory, and proves the cost.">
 <style>
-  :root { --bg:#fbfaf7; --ink:#1b1b1f; --muted:#5d5d66; --line:#e3e1db; --card:#fff; --accent:#0e8f8f; --ok:#1a7f37; --bad:#cf222e; --warn:#9a6700; }
+  /* Job colours (palette C): the type sets the colour. Text uses the -ink tone where the fill is too light to read. */
+  :root { --bg:#fbfaf7; --ink:#1b1b1f; --muted:#5d5d66; --line:#e3e1db; --card:#fff; --accent:#0e8f8f; --ok:#1a7f37; --bad:#cf222e;
+          --fix:#D63384; --add:#0E8F8F; --test:#F2C200; --test-ink:#8A6A00; --upgrade:#8250DF; --refactor:#57606A; --docs:#1F6FEB; }
   @media (prefers-color-scheme: dark) {
-    :root { --bg:#141417; --ink:#ececf1; --muted:#a3a3ad; --line:#2c2c33; --card:#1c1c21; --accent:#00d4d4; --ok:#3fb950; --bad:#f85149; --warn:#d29922; } }
+    :root { --bg:#141417; --ink:#ececf1; --muted:#a3a3ad; --line:#2c2c33; --card:#1c1c21; --accent:#00d4d4; --ok:#3fb950; --bad:#f85149;
+            --fix:#F778BA; --add:#00D4D4; --test:#F5D33A; --test-ink:#F5D33A; --upgrade:#A371F7; --refactor:#8B949E; --docs:#58A6FF; } }
+  .t-fix { --c:var(--fix); --c-ink:var(--fix); --chip-ink:#fff; }
+  .t-add { --c:var(--add); --c-ink:var(--add); --chip-ink:#fff; }
+  .t-test { --c:var(--test); --c-ink:var(--test-ink); --chip-ink:#111; }
+  .t-upgrade { --c:var(--upgrade); --c-ink:var(--upgrade); --chip-ink:#fff; }
+  .t-refactor { --c:var(--refactor); --c-ink:var(--refactor); --chip-ink:#fff; }
+  .t-docs { --c:var(--docs); --c-ink:var(--docs); --chip-ink:#fff; }
+  .chip { display:inline-block; font-size:12px; font-weight:800; letter-spacing:.06em; padding:2px 8px; border-radius:999px; background:var(--c); color:var(--chip-ink); }
+  .t-test .chip { background-image:repeating-linear-gradient(135deg, transparent 0 6px, rgba(0,0,0,.18) 6px 9px); }
+  .badge { font-size:12px; padding:1px 8px; border-radius:999px; border:1px solid currentColor; margin-left:8px; font-weight:600; letter-spacing:0; }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
   main { max-width:760px; margin:0 auto; padding:40px 16px 64px; }
@@ -16,17 +28,19 @@
   .lead { font-size:1.15rem; color:var(--muted); margin:0 0 28px; }
   h2 { font-size:1.15rem; margin:36px 0 12px; }
   .jobs { display:grid; gap:8px; }
-  .job { display:flex; gap:10px; align-items:center; padding:12px 14px; border:1px solid var(--line); border-radius:10px; background:var(--card); cursor:pointer; }
+  .job { display:flex; gap:10px; align-items:center; padding:12px 14px; border:1px solid var(--line); border-left:6px solid var(--c, var(--line)); border-radius:10px; background:var(--card); cursor:pointer; }
   .job input { accent-color:var(--accent); }
   .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin:16px 0 0; }
   button { padding:10px 18px; border-radius:8px; border:1px solid var(--ink); background:var(--ink); color:var(--bg); font:inherit; font-weight:600; cursor:pointer; }
   button:disabled { opacity:.5; cursor:default; }
   input[type=range] { width:180px; accent-color:var(--accent); }
   .meta { color:var(--muted); font-size:14px; }
-  .step { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin:12px 0 0; }
-  .step h3 { margin:0 0 6px; font-size:1rem; letter-spacing:.06em; }
+  .step { background:var(--card); border:1px solid var(--line); border-left:6px solid var(--c, var(--line)); border-radius:10px; padding:14px 16px; margin:12px 0 0; }
+  .step h3 { margin:0 0 6px; font-size:1rem; letter-spacing:.06em; color:var(--c-ink, inherit); }
+  .step.ok { --c:var(--ok); --c-ink:var(--ok); } .step.bad { --c:var(--bad); --c-ink:var(--bad); }
+  .ticks { display:flex; justify-content:space-between; width:180px; font-size:12px; color:var(--muted); margin-left:58px; }
   .step pre { white-space:pre-wrap; margin:8px 0 0; font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; max-height:240px; overflow:auto; }
-  .ok { color:var(--ok); } .bad { color:var(--bad); } .warn { color:var(--warn); }
+  .ok { color:var(--ok); } .bad { color:var(--bad); }
   .add { color:var(--ok); } .del { color:var(--bad); }
   table { border-collapse:collapse; font-size:14px; margin-top:8px; }
   td, th { border-bottom:1px solid var(--line); padding:6px 10px 6px 0; text-align:left; }
@@ -46,7 +60,8 @@
   <h2>Pick a job</h2>
   <div class="jobs" id="jobs"><p class="meta">Loading…</p></div>
   <div class="row">
-    <label>Budget <input type="range" id="budget" min="1" max="5" value="2"> <b id="budgetLabel">2¢</b></label>
+    <div><label>Budget <input type="range" id="budget" min="1" max="5" value="2"> <b id="budgetLabel">2¢</b></label>
+      <div class="ticks"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></div>
     <button id="hire">Hire</button>
   </div>
   <p class="meta" id="daily"></p>
@@ -56,6 +71,7 @@
   <footer>
     PLAN on Nemotron 3 Ultra · WRITE on the smallest Nemotron the job allows · TEST with the project's own tests · ITERATE until they pass, inside the budget.
     Every run is real and billed by Token Factory. Source: <a href="https://github.com/Wolfe-Jam/slash-agent">github.com/Wolfe-Jam/slash-agent</a> (MIT).
+    <a href="/design">How the job colours were chosen</a>.
   </footer>
 </main>
 <script>
@@ -67,14 +83,15 @@ $('budget').oninput = () => { $('budgetLabel').textContent = $('budget').value +
 
 fetch('/api/jobs').then(r => r.json()).then(({ jobs, dailyCap, spentToday }) => {
   $('jobs').innerHTML = jobs.map((j, i) =>
-    `<label class="job"><input type="radio" name="job" value="${esc(j.id)}" ${i === 0 ? 'checked' : ''}> ${esc(j.title)}</label>`).join('');
+    `<label class="job t-${esc(j.type)}"><input type="radio" name="job" value="${esc(j.id)}" ${i === 0 ? 'checked' : ''}> <span class="chip">${esc(j.type.toUpperCase())}</span> ${esc(j.title.replace(/^\w+:\s*/, ''))}</label>`).join('');
   $('daily').textContent = `Today's demo budget: $${spentToday.toFixed(4)} of $${dailyCap.toFixed(2)} used.`;
 });
 
+let jobType = '';
 function card(title, cls, body) {
   const div = document.createElement('div');
-  div.className = 'step';
-  div.innerHTML = `<h3 class="${cls}">${title}</h3>${body}`;
+  div.className = `step ${cls || (jobType ? 't-' + jobType : '')}`;
+  div.innerHTML = `<h3>${title}</h3>${body}`;
   $('run').appendChild(div);
   div.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
@@ -86,9 +103,9 @@ function booking(e) {
 }
 
 const handlers = {
-  start: e => card('HIRED', '', `<p>${esc(e.job)} · budget ${Math.round(e.budget * 100)}¢</p>`),
+  start: e => { jobType = e.type; card(`<span class="chip">${esc(e.type.toUpperCase())}</span> HIRED`, '', `<p>${esc(e.job)} · budget ${Math.round(e.budget * 100)}¢</p>`); },
   plan: e => card('PLAN', '', booking(e) + `<pre>${esc(e.plan)}</pre>`),
-  write: e => card(e.round > 1 ? `ITERATE · WRITE, round ${e.round}` : 'WRITE', e.round > 1 ? 'warn' : '',
+  write: e => card(e.round > 1 ? `ITERATE · WRITE<span class="badge">↻ round ${e.round}</span>` : 'WRITE', '',
     booking(e) + `<p>${e.files.length ? 'Files: ' + e.files.map(f => `<code>${esc(f)}</code>`).join(', ') : 'No files in the reply; asking again.'}</p>`),
   test: e => card(e.passed ? 'TEST · pass' : 'TEST · fail', e.passed ? 'ok' : 'bad', e.passed ? '' : `<pre>${esc(e.output)}</pre>`),
   done: e => {
@@ -114,7 +131,7 @@ $('hire').onclick = async () => {
   $('hire').disabled = true;
   try {
     const res = await fetch('/api/hire', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, budget: $('budget').value / 100 }) });
-    if (!res.ok) { const e = await res.json(); card('NOT NOW', 'warn', `<p>${esc(e.error)}</p>`); return; }
+    if (!res.ok) { const e = await res.json(); card('NOT NOW', 'note', `<p>${esc(e.error)}</p>`); return; }
     const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
     for (;;) {
       const { value, done } = await reader.read();

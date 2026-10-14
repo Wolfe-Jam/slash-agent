@@ -19,11 +19,13 @@ const DAILY_CAP = Number(process.env.DAILY_CAP ?? 0.5);
 const BUCKET = process.env.SPEND_BUCKET; // unset locally: spend is counted in memory
 const PROJECT_DIR = join(import.meta.dir, '../examples/cart');
 const PAGE = readFileSync(join(import.meta.dir, 'index.html'), 'utf8');
+const DESIGN = readFileSync(join(import.meta.dir, 'design.html'), 'utf8');
 
+/** Job types and their colours: see docs/design/job-colours.md and /design. */
 export const JOBS = [
-  { id: 'coupon', title: 'Fix: coupons discount the items, never shipping', task: 'Coupons should discount the items, never shipping. Fix total() and add a test that proves it.' },
-  { id: 'free-shipping', title: 'Add: free shipping when the items total $50 or more', task: 'Shipping should be free when the items total $50.00 (5000 cents) or more. Change total() and add tests for just under and exactly at $50.' },
-  { id: 'quantity', title: 'Add: every item needs a quantity of at least 1', task: 'total() should throw an Error when any item has a quantity below 1. Add tests for a quantity of 0 and a negative quantity.' },
+  { id: 'coupon', type: 'fix', title: 'Fix: coupons discount the items, never shipping', task: 'Coupons should discount the items, never shipping. Fix total() and add a test that proves it.' },
+  { id: 'free-shipping', type: 'add', title: 'Add: free shipping when the items total $50 or more', task: 'Shipping should be free when the items total $50.00 (5000 cents) or more. Change total() and add tests for just under and exactly at $50.' },
+  { id: 'multi-item', type: 'test', title: 'Test: cover a cart with several items and quantities', task: 'Add tests for total() with several different items and quantities (no coupon), checking the exact total in cents. Do not change total().' },
 ] as const;
 
 // ---- daily spend: a small JSON file in Cloud Storage, one per day (UTC) ----
@@ -99,7 +101,7 @@ async function hire(req: Request): Promise<Response> {
     async start(controller) {
       const send = (d: unknown) => controller.enqueue(new TextEncoder().encode(sse(d)));
       try {
-        send({ kind: 'start', job: job.title, budget });
+        send({ kind: 'start', job: job.title, type: job.type, budget });
         const r = await runJob({
           projectDir: PROJECT_DIR, task: job.task, budget,
           onEvent: e => {
@@ -130,9 +132,10 @@ export const server = {
     const { pathname } = new URL(req.url);
     if (req.method === 'GET' && pathname === '/') return new Response(PAGE, { headers: { ...headers, 'content-type': 'text/html; charset=utf-8' } });
     if (req.method === 'GET' && pathname === '/health') return new Response('ok');
+    if (req.method === 'GET' && pathname === '/design') return new Response(DESIGN, { headers: { ...headers, 'content-type': 'text/html; charset=utf-8' } });
     if (req.method === 'GET' && pathname === '/api/jobs') {
       const spent = await spentToday().catch(() => 0);
-      return Response.json({ jobs: JOBS.map(({ id, title }) => ({ id, title })), dailyCap: DAILY_CAP, spentToday: Math.round(spent * 1e6) / 1e6 });
+      return Response.json({ jobs: JOBS.map(({ id, type, title }) => ({ id, type, title })), dailyCap: DAILY_CAP, spentToday: Math.round(spent * 1e6) / 1e6 });
     }
     if (req.method === 'POST' && pathname === '/api/hire') return hire(req);
     return Response.json({ error: 'Not found' }, { status: 404 });
