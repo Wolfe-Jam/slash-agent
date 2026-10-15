@@ -112,7 +112,7 @@ const handlers = {
   extract: e => card('EXTRACT · Tavily', '', `<p class="meta">${e.chars.toLocaleString()} characters of release notes from <code>${esc(e.url)}</code> · ${e.credits} credit${e.credits === 1 ? '' : 's'}</p><p>PLAN and WRITE read them as reference data, not instructions.</p>`),
   plan: e => card('PLAN', '', booking(e) + `<pre>${md(e.plan)}</pre>`),
   write: e => card(e.round > 1 ? `ITERATE · WRITE<span class="badge">↻ round ${e.round}</span>` : 'WRITE', '',
-    booking(e) + `<p>${e.files.length ? 'Files: ' + e.files.map(f => `<code>${esc(f)}</code>`).join(', ') : 'No files in the reply; asking again.'}</p>`),
+    booking(e) + `<p>${e.files.length ? 'Changed: ' + e.files.map(f => `<code>${esc(f)}</code>`).join(', ') : e.unchanged?.length ? 'No changes this round.' : 'No files in the reply; asking again.'}</p>`),
   test: e => card(e.passed ? 'TEST · pass' : 'TEST · fail', e.passed ? 'st-ok' : 'st-bad', e.passed ? '' : `<pre>${esc(e.output)}</pre>`),
   done: e => {
     const d = e.diffs.map(f => `<p><code>${esc(f.file)}</code></p><pre>${f.added.map(l => `<span class="add">+ ${esc(l)}</span>`).join('\n')}\n${f.removed.map(l => `<span class="del">- ${esc(l)}</span>`).join('\n')}</pre>`).join('');
