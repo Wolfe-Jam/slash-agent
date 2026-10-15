@@ -48,6 +48,13 @@ describe('edit format', () => {
     ]);
   });
 
+  it('skips files sent back exactly as they are', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'apply-'));
+    expect(applyFiles(dir, [{ path: 'src/a.ts', content: 'x\n' }])).toEqual(['src/a.ts']);
+    expect(applyFiles(dir, [{ path: 'src/a.ts', content: 'x\n' }, { path: 'src/b.ts', content: 'y\n' }])).toEqual(['src/b.ts']);
+    expect(applyFiles(dir, [{ path: 'src/a.ts', content: 'old\n' }, { path: 'src/a.ts', content: 'x\n' }])).toEqual(['src/a.ts']);
+  });
+
   it('refuses to write outside the project', () => {
     const dir = mkdtempSync(join(tmpdir(), 'apply-'));
     for (const path of ['../evil.ts', '/etc/passwd', 'a/../../b.ts', '.github/workflows/x.yml', 'node_modules/x.js']) {
@@ -105,5 +112,20 @@ describe('runJob() on examples/cart', () => {
     expect(r.reason).toStartWith('plan blocked');
     expect(seen).toEqual([]);
     expect(r.session.spent).toBe(0);
+  });
+});
+
+describe('unchanged files', () => {
+  it('a file sent back as it was is not listed as changed', async () => {
+    const events: { files: string[]; unchanged: string[] }[] = [];
+    const sameTest = readFileSync(join(SAMPLE, 'tests/cart.test.ts'), 'utf8');
+    const r = await runJob({
+      projectDir: SAMPLE, task: TASK, budget: 0.05,
+      callFor: scripted(['1. Discount the subtotal only.', files(['src/cart.ts', FIXED_CART], ['tests/cart.test.ts', sameTest])]),
+      runTests: () => ({ passed: true, output: '' }),
+      onEvent: e => { if (e.kind === 'write') events.push({ files: e.files, unchanged: e.unchanged }); },
+    });
+    expect(r.changedFiles).toEqual(['src/cart.ts']);
+    expect(events).toEqual([{ files: ['src/cart.ts'], unchanged: ['tests/cart.test.ts'] }]);
   });
 });

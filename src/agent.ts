@@ -65,7 +65,8 @@ export type JobEvent =
   | { kind: 'search'; query: string; results: SearchResult[]; credits: number }
   | { kind: 'extract'; url: string; chars: number; credits: number }
   | { kind: 'plan'; decision: Decision; receipt?: Receipt; plan: string }
-  | { kind: 'write'; round: number; decision: Decision; receipt?: Receipt; files: string[] }
+  /** files: what the round changed; unchanged: files sent back exactly as they were. */
+  | { kind: 'write'; round: number; decision: Decision; receipt?: Receipt; files: string[]; unchanged: string[] }
   | { kind: 'test'; round: number; passed: boolean; output: string };
 
 export interface TestRun {
@@ -151,7 +152,10 @@ export function parseFiles(text: string): { path: string; content: string }[] {
   return out;
 }
 
-/** Write files inside `root` only: no absolute paths, no `..`, no dotfiles or node_modules. */
+/**
+ * Write files inside `root` only: no absolute paths, no `..`, no dotfiles or node_modules.
+ * Returns the paths it changed; a file sent back exactly as it is isn't written.
+ */
 export function applyFiles(root: string, files: { path: string; content: string }[]): string[] {
   const written: string[] = [];
   const base = resolve(root) + sep;
@@ -161,9 +165,10 @@ export function applyFiles(root: string, files: { path: string; content: string 
     if (!target.startsWith(base) || parts.some(p => p === '..' || p.startsWith('.') || p === 'node_modules')) {
       throw new Error(`Refusing to write outside the project: "${f.path}"`);
     }
+    if (existsSync(target) && readFileSync(target, 'utf8') === f.content) continue;
     mkdirSync(dirname(target), { recursive: true });
     writeFileSync(target, f.content);
-    written.push(f.path);
+    if (!written.includes(f.path)) written.push(f.path);
   }
   return written;
 }
@@ -303,12 +308,14 @@ export async function runJob(opts: JobOptions): Promise<JobResult> {
     if (!editJob.receipt) return finish(false, `edit blocked: ${editJob.decision.reason}`, tests);
 
     const files = parseFiles(editJob.output ?? '');
-    emit({ kind: 'write', round, decision: editJob.decision, receipt: editJob.receipt, files: [...new Set(files.map(f => f.path))] });
+    const written = files.length ? applyFiles(workDir, files) : [];
+    const unchanged = [...new Set(files.map(f => f.path))].filter(p => !written.includes(p));
+    emit({ kind: 'write', round, decision: editJob.decision, receipt: editJob.receipt, files: written, unchanged });
     if (files.length === 0) {
       feedback = `\n\nYour last reply had no files in the required format. Reply only with === FILE: … === / === END === blocks.`;
       continue;
     }
-    for (const p of applyFiles(workDir, files)) changed.add(p);
+    for (const p of written) changed.add(p);
 
     tests = runTests(workDir);
     log(`test  ${tests.passed ? 'pass' : 'fail'}`);
