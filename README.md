@@ -8,18 +8,20 @@
 
 | Step | What happens | Model |
 |---|---|---|
+| **SEARCH** | Upgrade jobs only: finds today's release notes on the web | none, one Tavily search |
+| **EXTRACT** | Upgrade jobs only: pulls the notes' text, passed to PLAN and WRITE as data | none, one Tavily extract |
 | **QUOTE** | prices the job before any call | none, slash-tokens counts the tokens |
 | **PLAN** | reads the project and writes a short plan | Nemotron 3 Ultra, reasoning on |
 | **WRITE** | writes the change and a test that proves it | the smallest Nemotron the job allows (e.g. Super), reasoning off |
 | **TEST** | runs the project's own tests on a copy | none |
 | **ITERATE** | sends any failures back and writes again, up to 3 rounds, inside the budget | as WRITE |
-| **RECEIPT** | what Token Factory billed, what the models asked for would have cost, what you saved | none |
+| **RECEIPT** | what Token Factory billed, what the models asked for would have cost, what you saved, and Tavily's credits | none |
 
 One budget covers the whole job. Your project is never changed: the agent works on a copy.
 
 ## Try it
 
-**[Hire the agent](https://agent-web-524037477356.us-central1.run.app)**: pick one of three jobs on a small shop cart, set a budget of 1 to 5 cents, click **Hire**, and watch each step live. Every run is a real job on Token Factory.
+**[Hire the agent](https://agent-web-524037477356.us-central1.run.app)**: pick one of four jobs on a small shop, set a budget of 1 to 5 cents, click **Hire**, and watch each step live. Every run is a real job on Token Factory.
 
 A live run on the demo (2026-10-14):
 
@@ -31,7 +33,7 @@ TEST    pass, round 1
 RECEIPT spent $0.003573 · on the models asked for $0.006536 · saved $0.002963 · billed more than quoted: no
 ```
 
-The demo runs preset jobs only (no free text), one job at a time, with a daily cap of $0.50. Each job type has its own colour: [how the colours were chosen](docs/design/job-colours.md).
+The demo runs preset jobs only (no free text), one job at a time, with a daily cap of $0.50 and 50 Upgrade runs a day. Each job type has its own colour: [how the colours were chosen](docs/design/job-colours.md).
 
 ## Run it yourself
 
@@ -39,6 +41,8 @@ The demo runs preset jobs only (no free text), one job at a time, with a daily c
 bun install
 export NEBIUS_API_KEY=...   # a Token Factory key
 bun run demo                # hires the agent for one job on examples/cart
+export TAVILY_API_KEY=...   # for the Upgrade job
+bun run demo -- --upgrade   # Zod 3 → Zod 4 on examples/checkout
 ```
 
 In code:
@@ -80,9 +84,21 @@ receipt.saved     // dollars saved against Ultra
 - **Rate limits respected.** 429s and 5xx retry with `Retry-After` or backoff.
 - **Sandboxes next.** Beta access is requested; TEST will run in Token Factory Sandboxes (isolated microVMs, checkpoint and branch for ITERATE). Today it runs on an isolated copy inside the demo's container.
 
+## The Upgrade job: Tavily for what models can't know
+
+An upgrade needs today's release notes, not a model's memory. **Upgrade: move the checkout from Zod 3 to Zod 4** works on [`examples/checkout`](examples/checkout), where `validateCart()` uses Zod 3 and tests pin its error messages. Zod 4 breaks it twice: `error.errors` is gone, and `required_error` / `invalid_type_error` are silently dropped, so the messages change.
+
+- **SEARCH:** one Tavily search, `Zod 4 migration guide breaking changes` on zod.dev, finds the official migration guide.
+- **EXTRACT:** one Tavily extract of the top result. The guide lists breaking changes by impact, so the first 6,000 characters cover them.
+- **PLAN and WRITE** read the notes as labelled reference data, never as instructions. The plan cites them ("`.errors` dropped in Zod 4, use `.issues`").
+- **TEST** runs `bun install --ignore-scripts` on the copy first. The agent may change versions of the packages already there, never add one.
+- **RECEIPT** adds a TAVILY section: searches, extracts and Tavily's own credit count.
+
+The query comes from the preset job, never from a visitor. If the search finds nothing, the job stops before any model call. In our live runs with this setup (2026-10-14) it passed 4 of 5, one of them after an ITERATE round, for $0.007 to $0.020 on the models plus 1 Tavily credit a run. The miss ran out of rounds with the tests still failing, and its receipt said so.
+
 ## The demo on Google Cloud
 
-[`web/`](web/) is the page: one Bun server, no AI calls of its own beyond the agent's. It deploys from this repository's `main` to Cloud Run with no stored GitHub secret (Workload Identity Federation trusts only this repository's `main`). The Token Factory key is a Secret Manager secret only the app can read. A Cloud Storage counter enforces the daily cap; an uptime check watches `/health`.
+[`web/`](web/) is the page: one Bun server, no AI calls of its own beyond the agent's. It deploys from this repository's `main` to Cloud Run with no stored GitHub secret (Workload Identity Federation trusts only this repository's `main`). The Token Factory and Tavily keys are Secret Manager secrets only the app can read. A Cloud Storage counter enforces the daily cap; an uptime check watches `/health`.
 
 Everything is in this repository: what runs ([`web/Dockerfile`](web/Dockerfile)), how it deploys ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)), and the one-time Google Cloud setup ([`deploy/gcp-setup.sh`](deploy/gcp-setup.sh): project, budget alert, registry, keyless login, least-privilege identities, the key in Secret Manager, the spend counter).
 
@@ -115,6 +131,7 @@ This repository was created on 2026-10-10. Everything in it is new work for the 
 - **slash-tokens 1.7.0 → 1.8.1** (Oct 9–11): `quote()`, `decide()`, `reconcile()` and `hire().run()`; the four Nemotron models with exact prices, context windows and IDs; request framing measured on real Token Factory bills; each call capped at its own quote.
 - **slash-agent 0.1 → 0.2** (Oct 10): the Token Factory client, then the full loop on the sample project.
 - **Hire the agent** (Oct 14): the live demo on Google Cloud Run.
+- **The Upgrade job** (Oct 14): Tavily search and extract before PLAN, on a Zod 3 → 4 upgrade.
 
 ## Feedback on Nebius Token Factory and NVIDIA Nemotron
 
@@ -151,7 +168,7 @@ We used Token Factory only, not AI Cloud's compute, so we have no AI Cloud feedb
 ## Tests
 
 ```bash
-bun test                                   # offline (stub replies, real bun test on a temp copy)
+bun test                                   # offline (stub replies and a stub Tavily, real bun test on a temp copy)
 NEBIUS_LIVE=1 bun test                     # plus one real Token Factory call
 ```
 

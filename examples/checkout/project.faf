@@ -1,0 +1,16 @@
+faf_version: "3.0"
+project:
+  name: checkout-sample
+  goal: Checks a shop cart from the outside world with Zod, the sample project for slash-agent's Upgrade job.
+  main_language: TypeScript
+  type: library
+human_context:
+  who: Anyone trying slash-agent's Upgrade job
+  what: validateCart(input) checks a cart and returns readable "path: message" errors
+  why: A real library upgrade with breaking changes, small enough to read in a minute
+  where: examples/checkout in the slash-agent repo
+  when: Added 2026-10-14 for the Nebius x NVIDIA Global AI Hackathon demo
+  how: bun install && bun test
+rules:
+  - Error messages are part of the contract; the tests pin them.
+  - Every behaviour change comes with a test.

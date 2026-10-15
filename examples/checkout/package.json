@@ -1,0 +1,9 @@
+{
+  "name": "checkout-sample",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "bun test" },
+  "dependencies": {
+    "zod": "3.25.76"
+  }
+}
