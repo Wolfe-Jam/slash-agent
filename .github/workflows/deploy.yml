@@ -57,8 +57,8 @@ jobs:
             --project $PROJECT --region $REGION \
             --service-account agent-web@slash-agent-demo.iam.gserviceaccount.com \
             --allow-unauthenticated \
-            --set-secrets NEBIUS_API_KEY=nebius-api-key:latest \
-            --set-env-vars SPEND_BUCKET=slash-agent-demo-spend,DAILY_CAP=0.5 \
+            --set-secrets NEBIUS_API_KEY=nebius-api-key:latest,TAVILY_API_KEY=tavily-api-key:latest \
+            --set-env-vars SPEND_BUCKET=slash-agent-demo-spend,DAILY_CAP=0.5,UPGRADE_CAP=50 \
             --max-instances 1 --concurrency 20 --timeout 300 --memory 1Gi --quiet
           echo "url=$(gcloud run services describe agent-web --project $PROJECT --region $REGION --format='value(status.url)')" >> "$GITHUB_OUTPUT"
       - name: Health check

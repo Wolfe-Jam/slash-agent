@@ -55,7 +55,7 @@
   <p class="lead">A coding agent you hire with a budget. It quotes the job, books the right NVIDIA Nemotron model on Nebius Token Factory for each step, and proves the cost with a receipt.</p>
 
   <h2>The project</h2>
-  <p class="meta">A small shop cart: <code>total()</code> adds up items, a percentage coupon and shipping, with tests. The agent works on a copy; nothing is kept.</p>
+  <p class="meta">A small shop: a cart, where <code>total()</code> adds up items, a percentage coupon and shipping, and a checkout, where <code>validateCart()</code> checks orders with Zod 3. Both have tests. The agent works on a copy; nothing is kept.</p>
 
   <h2>Pick a job</h2>
   <div class="jobs" id="jobs"><p class="meta">Loading…</p></div>
@@ -69,7 +69,7 @@
   <div id="run"></div>
 
   <footer>
-    PLAN on Nemotron 3 Ultra · WRITE on the smallest Nemotron the job allows · TEST with the project's own tests · ITERATE until they pass, inside the budget.
+    Upgrade jobs SEARCH and EXTRACT with Tavily first, for release notes the models can't know. PLAN on Nemotron 3 Ultra · WRITE on the smallest Nemotron the job allows · TEST with the project's own tests · ITERATE until they pass, inside the budget.
     Every run is real and billed by Token Factory. Source: <a href="https://github.com/Wolfe-Jam/slash-agent">github.com/Wolfe-Jam/slash-agent</a> (MIT).
     <a href="/design">How the job colours were chosen</a>.
   </footer>
@@ -83,10 +83,11 @@ const usd = n => n == null ? '–' : '$' + Number(n).toFixed(6);
 
 $('budget').oninput = () => { $('budgetLabel').textContent = $('budget').value + '¢'; };
 
-fetch('/api/jobs').then(r => r.json()).then(({ jobs, dailyCap, spentToday }) => {
+fetch('/api/jobs').then(r => r.json()).then(({ jobs, dailyCap, spentToday, upgradeCap, upgradesToday }) => {
   $('jobs').innerHTML = jobs.map((j, i) =>
     `<label class="job t-${esc(j.type)}"><input type="radio" name="job" value="${esc(j.id)}" ${i === 0 ? 'checked' : ''}> <span class="chip">${esc(j.type.toUpperCase())}</span> ${esc(j.title.replace(/^\w+:\s*/, ''))}</label>`).join('');
-  $('daily').textContent = `Demo spend today: $${spentToday.toFixed(4)} of the $${dailyCap.toFixed(2)} daily cap.`;
+  $('daily').textContent = `Demo spend today: $${spentToday.toFixed(4)} of the $${dailyCap.toFixed(2)} daily cap.` +
+    (jobs.some(j => j.type === 'upgrade') ? ` Upgrade runs today: ${upgradesToday} of ${upgradeCap}.` : '');
 });
 
 let jobType = '';
@@ -106,6 +107,9 @@ function booking(e) {
 
 const handlers = {
   start: e => { jobType = e.type; card(`<span class="chip">${esc(e.type.toUpperCase())}</span> HIRED`, '', `<p>${esc(e.job)} · budget ${Math.round(e.budget * 100)}¢</p>`); },
+  search: e => card('SEARCH · Tavily', '', `<p class="meta">“${esc(e.query)}” · ${e.credits} credit${e.credits === 1 ? '' : 's'}</p>` +
+    (e.results.length ? `<p>${e.results.map(r => `<a href="${esc(r.url)}" rel="noopener" target="_blank">${esc(r.title || r.url)}</a>`).join('<br>')}</p>` : '<p>Nothing found.</p>')),
+  extract: e => card('EXTRACT · Tavily', '', `<p class="meta">${e.chars.toLocaleString()} characters of release notes from <code>${esc(e.url)}</code> · ${e.credits} credit${e.credits === 1 ? '' : 's'}</p><p>PLAN and WRITE read them as reference data, not instructions.</p>`),
   plan: e => card('PLAN', '', booking(e) + `<pre>${md(e.plan)}</pre>`),
   write: e => card(e.round > 1 ? `ITERATE · WRITE<span class="badge">↻ round ${e.round}</span>` : 'WRITE', '',
     booking(e) + `<p>${e.files.length ? 'Files: ' + e.files.map(f => `<code>${esc(f)}</code>`).join(', ') : 'No files in the reply; asking again.'}</p>`),
@@ -122,6 +126,10 @@ const handlers = {
         <tr><td>Agent's fee (${Math.round(r.fee.rate * 100)}% of savings)</td><td>${usd(r.fee.amount)}, waived</td></tr>
         <tr><td>Budget left</td><td>${usd(r.remaining)}</td></tr>
         <tr><td>Billed more than quoted?</td><td>${r.underReported ? '<span class="bad">yes</span>' : 'no'}</td></tr>
+        ${r.research ? `<tr><th colspan="2" style="padding-top:12px">TAVILY</th></tr>
+        <tr><td>Searches · extracts</td><td>${r.research.searches} · ${r.research.extracts}</td></tr>
+        <tr><td>Credits used (Tavily's count)</td><td>${r.research.credits}</td></tr>
+        <tr><td>At the pay-as-you-go rate</td><td>${usd(r.research.cost)}</td></tr>` : ''}
       </table>`);
   },
   error: e => card('STOPPED', 'st-bad', `<p>${esc(e.message)}</p>`),

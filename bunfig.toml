@@ -1,0 +1,3 @@
+[test]
+# The examples are projects the agent works on; their tests run on its copies.
+root = "tests"

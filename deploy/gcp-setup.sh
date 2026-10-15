@@ -4,11 +4,14 @@
 # These are the exact commands that built the live demo. Run once, as a Google
 # Cloud user who can create projects and link billing. CI logs in with
 # GitHub's OIDC token (Workload Identity Federation), so no Google key is ever
-# created. The Token Factory key goes from your environment straight into
-# Secret Manager and is never written to a file.
+# created. The Token Factory key (and the Tavily key, for the Upgrade job) go
+# from your environment straight into Secret Manager, never to a file.
 #
-#   NEBIUS_API_KEY=... PROJECT_ID=my-agent BILLING_ACCOUNT=XXXXXX-XXXXXX-XXXXXX \
+#   NEBIUS_API_KEY=... TAVILY_API_KEY=... PROJECT_ID=my-agent BILLING_ACCOUNT=XXXXXX-XXXXXX-XXXXXX \
 #   GITHUB_REPO=you/slash-agent bash deploy/gcp-setup.sh
+#
+# No Tavily key? Leave it unset and drop TAVILY_API_KEY from --set-secrets in
+# deploy.yml: the page then offers the jobs that don't search the web.
 #
 # Then put the printed project number into .github/workflows/deploy.yml
 # (workload_identity_provider) and push to main.
@@ -74,6 +77,11 @@ gcloud iam service-accounts add-iam-policy-binding "$RUNTIME" --member="serviceA
 say "The Token Factory key, readable only by the app"
 printf '%s' "$NEBIUS_API_KEY" | try gcloud secrets create nebius-api-key --data-file=- --replication-policy=automatic
 gcloud secrets add-iam-policy-binding nebius-api-key --member="serviceAccount:$RUNTIME" --role=roles/secretmanager.secretAccessor >/dev/null
+if [ -n "${TAVILY_API_KEY:-}" ]; then
+  say "The Tavily key, readable only by the app"
+  printf '%s' "$TAVILY_API_KEY" | try gcloud secrets create tavily-api-key --data-file=- --replication-policy=automatic
+  gcloud secrets add-iam-policy-binding tavily-api-key --member="serviceAccount:$RUNTIME" --role=roles/secretmanager.secretAccessor >/dev/null
+fi
 
 say "Daily spend counter (private bucket, the app only)"
 try gcloud storage buckets create "gs://$BUCKET" --location="$REGION" --uniform-bucket-level-access --public-access-prevention
