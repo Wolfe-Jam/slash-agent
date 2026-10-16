@@ -129,7 +129,7 @@ async function hire(req: Request): Promise<Response> {
           onEvent: e => {
             if (e.kind === 'search') send({ kind: 'search', query: e.query, results: e.results.map(({ title, url }) => ({ title, url })), credits: e.credits });
             else if (e.kind === 'extract') send(e);
-            else if (e.kind === 'plan') send({ kind: 'plan', ...stepView(e), plan: e.plan.slice(0, 2000) });
+            else if (e.kind === 'plan') send({ kind: 'plan', ...stepView(e), plan: e.plan.slice(0, 2000), replanned: !!e.replanned });
             else if (e.kind === 'write') send({ kind: 'write', round: e.round, ...stepView(e), files: e.files, unchanged: e.unchanged });
             else send({ kind: 'test', round: e.round, passed: e.passed, output: e.output.slice(-1200) });
           },
