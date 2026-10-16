@@ -129,3 +129,38 @@ describe('unchanged files', () => {
     expect(events).toEqual([{ files: ['src/cart.ts'], unchanged: ['tests/cart.test.ts'] }]);
   });
 });
+
+describe('plan out of room', () => {
+  it('plans again with reasoning off when reasoning uses the whole output cap', async () => {
+    const seen: { model: string; reasoning: boolean }[] = [];
+    let n = 0;
+    const events: { replanned?: boolean; plan: string }[] = [];
+    const r = await runJob({
+      projectDir: SAMPLE, task: TASK, budget: 0.05,
+      plan: { maxOutputTokens: 800 },
+      callFor: (step: StepPolicy): CallModel => async (model) => {
+        seen.push({ model, reasoning: step.reasoning });
+        n++;
+        if (n === 1) return { output: 'Let me analyze the task…', usage: { prompt_tokens: 120, completion_tokens: 800 } };
+        if (n === 2) return { output: '1. Discount the subtotal only.', usage: { prompt_tokens: 120, completion_tokens: 60 } };
+        return { output: files(['src/cart.ts', FIXED_CART]), usage: { prompt_tokens: 120, completion_tokens: 300 } };
+      },
+      runTests: () => ({ passed: true, output: '' }),
+      onEvent: e => { if (e.kind === 'plan') events.push({ replanned: e.replanned, plan: e.plan }); },
+    });
+    expect(seen.slice(0, 2)).toEqual([{ model: 'nemotron-3-ultra', reasoning: true }, { model: 'nemotron-3-ultra', reasoning: false }]);
+    expect(events).toEqual([{ replanned: true, plan: '1. Discount the subtotal only.' }]);
+    expect(r.done).toBe(true);
+    expect(r.session.calls).toBe(3);
+  });
+
+  it('a plan that fits keeps its one call', async () => {
+    let calls = 0;
+    await runJob({
+      projectDir: SAMPLE, task: TASK, budget: 0.05,
+      callFor: () => (async () => { calls++; return { output: calls === 1 ? '1. Plan.' : files(['src/cart.ts', FIXED_CART]), usage: { prompt_tokens: 120, completion_tokens: 300 } }; }) as CallModel,
+      runTests: () => ({ passed: true, output: '' }),
+    });
+    expect(calls).toBe(2);
+  });
+});

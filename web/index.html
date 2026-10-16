@@ -110,7 +110,7 @@ const handlers = {
   search: e => card('SEARCH · Tavily', '', `<p class="meta">“${esc(e.query)}” · ${e.credits} credit${e.credits === 1 ? '' : 's'}</p>` +
     (e.results.length ? `<p>${e.results.map(r => `<a href="${esc(r.url)}" rel="noopener" target="_blank">${esc(r.title || r.url)}</a>`).join('<br>')}</p>` : '<p>Nothing found.</p>')),
   extract: e => card('EXTRACT · Tavily', '', `<p class="meta">${e.chars.toLocaleString()} characters of release notes from <code>${esc(e.url)}</code> · ${e.credits} credit${e.credits === 1 ? '' : 's'}</p><p>PLAN and WRITE read them as reference data, not instructions.</p>`),
-  plan: e => card('PLAN', '', booking(e) + `<pre>${md(e.plan)}</pre>`),
+  plan: e => card(e.replanned ? 'PLAN<span class="badge">↻ reasoning off</span>' : 'PLAN', '', (e.replanned ? '<p class="meta">The first plan ran out of room while reasoning, so it planned again with reasoning off. Both calls are on the receipt.</p>' : '') + booking(e) + `<pre>${md(e.plan)}</pre>`),
   write: e => card(e.round > 1 ? `ITERATE · WRITE<span class="badge">↻ round ${e.round}</span>` : 'WRITE', '',
     booking(e) + `<p>${e.files.length ? 'Changed: ' + e.files.map(f => `<code>${esc(f)}</code>`).join(', ') : e.unchanged?.length ? 'No changes this round.' : 'No files in the reply; asking again.'}</p>`),
   test: e => card(e.passed ? 'TEST · pass' : 'TEST · fail', e.passed ? 'st-ok' : 'st-bad', e.passed ? '' : `<pre>${esc(e.output)}</pre>`),
