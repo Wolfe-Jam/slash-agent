@@ -108,7 +108,7 @@ Built small on purpose. Each piece has a clear next step at scale:
 
 | Today | At scale |
 |---|---|
-| Three preset jobs on a sample project | Jobs on a team's own repositories, opened from issues or merge requests |
+| Four preset jobs on two sample projects | Jobs on a team's own repositories, opened from issues or merge requests |
 | Tests on an isolated copy in the container | **Token Factory Sandboxes** for every run: isolated microVMs, checkpoint and branch to try fixes in parallel |
 | One job at a time, one instance | A queue (Cloud Tasks) feeding many workers |
 | A daily cap in a Cloud Storage file | Budgets per team and per project in a transactional store, with alerts |
@@ -132,6 +132,7 @@ This repository was created on 2026-10-10. Everything in it is new work for the 
 - **slash-agent 0.1 → 0.2** (Oct 10): the Token Factory client, then the full loop on the sample project.
 - **Hire the agent** (Oct 14): the live demo on Google Cloud Run.
 - **The Upgrade job** (Oct 14): Tavily search and extract before PLAN, on a Zod 3 → 4 upgrade.
+- **Fixes found by live runs** (Oct 14–16): files the model sends back unchanged are no longer counted as changes; when PLAN spends its whole output cap on reasoning, it plans once more with reasoning off (the PLAN card shows **↻ reasoning off**).
 
 ## Feedback on Nebius Token Factory and NVIDIA Nemotron
 
