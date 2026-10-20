@@ -4,11 +4,13 @@
  *   GET  /            the page
  *   GET  /api/jobs    the preset jobs
  *   POST /api/hire    { job, budget } → a live event stream (text/event-stream)
+ *   POST /api/stop    { id } → stop that job before its next call (it still sends its receipt)
  *   GET  /health      for the uptime check
  *
  * Every run is a real job on Nebius Token Factory with NVIDIA Nemotron.
  * Visitors pick a preset job (no free text) and a budget of 1 to 5 cents.
- * One job runs at a time, and a daily cap stops spending for the day.
+ * One job runs at a time; up to 3 visitors wait in line (for up to 2 minutes).
+ * A daily cap stops spending for the day.
  * The Upgrade job also searches the web with Tavily: at most one search and
  * one extract a run, and a cap of UPGRADE_CAP runs a day.
  */
@@ -100,32 +102,70 @@ function diffs(projectDir: string, workDir: string, files: string[]) {
 }
 
 let busy = false;
+/** Visitors waiting for their turn, first in line first. */
+const waiting: symbol[] = [];
+const MAX_WAITING = 3;
+const MAX_WAIT_MS = 120_000;
+/** The job that is running now; a visitor can only stop their own (by its id). */
+let current: { id: string; stop: boolean } | null = null;
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+/** Why a new job can't start today, or null when it can. */
+async function refusal(isUpgrade: boolean, budget: number): Promise<string | null> {
+  const day = await readDay().catch(() => ({ spent: DAILY_CAP, upgrades: UPGRADE_CAP }));
+  if (day.spent + budget > DAILY_CAP) return `Today's demo budget ($${DAILY_CAP.toFixed(2)}) is used up. It resets at midnight UTC.`;
+  if (isUpgrade && day.upgrades >= UPGRADE_CAP) return `Today's ${UPGRADE_CAP} Upgrade runs are used up. The other jobs still run; Upgrade resets at midnight UTC.`;
+  return null;
+}
 
 async function hire(req: Request): Promise<Response> {
   const { job: jobId, budget: rawBudget } = await req.json().catch(() => ({})) as { job?: string; budget?: number };
   const job = JOBS.find(j => j.id === jobId);
   if (!job) return Response.json({ error: 'Pick one of the jobs.' }, { status: 400 });
-  if (busy) return Response.json({ error: "Another visitor's job is running. Try again in a minute." }, { status: 429 });
   const budget = clampBudget(rawBudget);
-  const day = await readDay().catch(() => ({ spent: DAILY_CAP, upgrades: UPGRADE_CAP }));
-  if (day.spent + budget > DAILY_CAP) {
-    return Response.json({ error: `Today's demo budget ($${DAILY_CAP.toFixed(2)}) is used up. It resets at midnight UTC.` }, { status: 429 });
-  }
   const isUpgrade = 'research' in job;
-  if (isUpgrade && day.upgrades >= UPGRADE_CAP) {
-    return Response.json({ error: `Today's ${UPGRADE_CAP} Upgrade runs are used up. The other jobs still run; Upgrade resets at midnight UTC.` }, { status: 429 });
-  }
+  const no = await refusal(isUpgrade, budget);
+  if (no) return Response.json({ error: no }, { status: 429 });
   const projectDir = join(EXAMPLES, job.project);
 
-  busy = true;
+  // One job runs at a time; a few visitors can wait in line. Decided in one step, so two requests can't both take the slot.
+  if (busy && waiting.length >= MAX_WAITING) {
+    return Response.json({ error: `${waiting.length} visitors are already waiting for their turn. Try again in a minute.` }, { status: 429 });
+  }
+  const mustWait = busy;
+  if (!mustWait) busy = true;
+
+  const me = Symbol('visitor');
+  const run = { id: crypto.randomUUID(), stop: false };
+  let cancelled = false;                 // the visitor went away
+  if (!mustWait) current = run;
   const stream = new ReadableStream({
     async start(controller) {
-      const send = (d: unknown) => controller.enqueue(new TextEncoder().encode(sse(d)));
+      const send = (d: unknown) => { try { controller.enqueue(new TextEncoder().encode(sse(d))); } catch { /* the visitor left */ } };
+      let tookSlot = !mustWait;
       try {
-        send({ kind: 'start', job: job.title, type: job.type, budget });
+        if (mustWait) {
+          waiting.push(me);
+          const deadline = Date.now() + MAX_WAIT_MS;
+          let shown = -1;
+          while (!cancelled && Date.now() < deadline && (busy || waiting[0] !== me)) {
+            const position = waiting.indexOf(me) + 1;
+            if (position !== shown) { shown = position; send({ kind: 'queued', position }); }
+            await sleep(400);
+          }
+          const i = waiting.indexOf(me);
+          if (i >= 0) waiting.splice(i, 1);
+          if (cancelled) return;
+          if (busy) { send({ kind: 'error', message: 'Still busy after two minutes. Try again.' }); return; }
+          busy = true; tookSlot = true; current = run;   // take the slot before anything else can
+          const again = await refusal(isUpgrade, budget);
+          if (again) { send({ kind: 'error', message: again }); return; }
+        }
+        send({ kind: 'start', id: run.id, job: job.title, type: job.type, budget });
         const r = await runJob({
           projectDir, task: job.task, budget,
           research: 'research' in job ? job.research : undefined,
+          shouldStop: () => run.stop || cancelled,
           onEvent: e => {
             if (e.kind === 'search') send({ kind: 'search', query: e.query, results: e.results.map(({ title, url }) => ({ title, url })), credits: e.credits });
             else if (e.kind === 'extract') send(e);
@@ -139,12 +179,20 @@ async function hire(req: Request): Promise<Response> {
       } catch {
         send({ kind: 'error', message: 'The job stopped unexpectedly. Try again.' });
       } finally {
-        busy = false;
-        controller.close();
+        if (tookSlot) { busy = false; if (current === run) current = null; }
+        try { controller.close(); } catch { /* already closed */ }
       }
     },
+    cancel() { cancelled = true; run.stop = true; },   // the visitor closed the page or left the line
   });
   return new Response(stream, { headers: { 'content-type': 'text/event-stream', 'cache-control': 'no-store' } });
+}
+
+/** Stop the running job before its next call. The job still sends its receipt for what it spent. */
+async function stop(req: Request): Promise<Response> {
+  const { id } = await req.json().catch(() => ({})) as { id?: string };
+  if (current && id && id === current.id) { current.stop = true; return Response.json({ ok: true }); }
+  return Response.json({ ok: false }, { status: 404 });
 }
 
 const headers = { 'x-content-type-options': 'nosniff', 'content-security-policy': "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'" };
@@ -166,6 +214,7 @@ export const server = {
       });
     }
     if (req.method === 'POST' && pathname === '/api/hire') return hire(req);
+    if (req.method === 'POST' && pathname === '/api/stop') return stop(req);
     return Response.json({ error: 'Not found' }, { status: 404 });
   },
 };

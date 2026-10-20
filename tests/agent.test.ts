@@ -164,3 +164,39 @@ describe('plan out of room', () => {
     expect(calls).toBe(2);
   });
 });
+
+describe('stopping', () => {
+  it('stops before the next call and keeps what it spent', async () => {
+    let calls = 0;
+    const r = await runJob({
+      projectDir: SAMPLE, task: TASK, budget: 0.05,
+      callFor: () => (async () => { calls++; return { output: '1. Plan.', usage: { prompt_tokens: 120, completion_tokens: 300 } }; }) as CallModel,
+      shouldStop: () => calls >= 1,   // the visitor presses Stop while PLAN runs
+    });
+    expect(calls).toBe(1);            // PLAN ran; WRITE never started
+    expect(r.done).toBe(false);
+    expect(r.reason).toContain('stopped');
+    expect(r.session.spent).toBeGreaterThan(0);
+  });
+
+  it('asked to stop at the start, calls nothing and spends nothing', async () => {
+    let calls = 0;
+    const r = await runJob({
+      projectDir: SAMPLE, task: TASK, budget: 0.05,
+      callFor: () => (async () => { calls++; return { output: 'x', usage: { prompt_tokens: 1, completion_tokens: 1 } }; }) as CallModel,
+      shouldStop: () => true,
+    });
+    expect(calls).toBe(0);
+    expect(r.reason).toContain('stopped');
+    expect(r.session.spent).toBe(0);
+  });
+
+  it('never stops a job that was not asked to', async () => {
+    const r = await runJob({
+      projectDir: SAMPLE, task: TASK, budget: 0.05,
+      callFor: scripted(['1. In src/cart.ts discount the subtotal only.', files(['src/cart.ts', FIXED_CART], ['tests/cart.test.ts', NEW_TEST])]),
+      shouldStop: () => false,
+    });
+    expect(r.done).toBe(true);
+  });
+});

@@ -53,6 +53,8 @@
   .status.run .dot { animation:pulse 1s ease-in-out infinite; }
   .status.done { color:var(--ok); } .status.done .dot { background:var(--ok); }
   .status.bad { color:var(--bad); } .status.bad .dot { background:var(--bad); }
+  .status.stop { color:var(--muted); } .status.stop .dot { background:var(--muted); }
+  button.secondary { background:transparent; color:var(--ink); }
   @keyframes pulse { 0%,100% { opacity:.25; } 50% { opacity:1; } }
   @media (prefers-reduced-motion: reduce) { .status.run .dot { animation:none; } }
   .bars { margin:10px 0 4px; font-size:14px; }
@@ -83,6 +85,7 @@
     <div><label>Budget <input type="range" id="budget" min="1" max="5" value="2"> <b id="budgetLabel">2¢</b></label>
       <div class="ticks"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></div>
     <button id="hire">Hire</button>
+    <button id="stop" class="secondary" hidden>Stop</button>
   </div>
   <div id="status" class="status" role="status" aria-live="polite" hidden><span class="dot"></span><span id="statusText"></span></div>
   <p class="meta">Every run is real and billed by Token Factory. It takes seconds to about a minute and costs a few cents. The jobs are presets on a sample project for now.</p>
@@ -121,6 +124,7 @@ function card(title, cls, body) {
   div.innerHTML = `<h3>${title}</h3>${body}`;
   $('run').appendChild(div);
   div.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  return div;
 }
 
 function booking(e) {
@@ -131,6 +135,7 @@ function booking(e) {
 
 const PRETTY = { 'nemotron-3-ultra': 'Nemotron 3 Ultra', 'nemotron-3-super': 'Nemotron 3 Super', 'nemotron-3-nano': 'Nemotron 3 Nano', 'nemotron-3.5-lightning': 'Nemotron 3.5 Lightning' };
 const pretty = id => PRETTY[id] ?? id ?? '–';
+let runId = null, ctl = null, queuedEl = null;   // this run's id (to stop it), its connection, and the "in line" card
 let calls = [];   // every model call this run: what it asked for, what it got, what it cost
 
 function setStatus(state, text) {
@@ -140,18 +145,24 @@ function setStatus(state, text) {
 }
 // After each event, say what is running now (or that it has finished).
 function progress(e) {
-  if (e.kind === 'start') setStatus('run', e.type === 'upgrade' ? 'Working: SEARCH (Tavily)…' : 'Working: PLAN…');
+  if (e.kind === 'queued') setStatus('run', e.position === 1 ? 'Waiting: you are next in line…' : `Waiting: ${e.position - 1} visitors ahead of you…`);
+  else if (e.kind === 'start') setStatus('run', e.type === 'upgrade' ? 'Working: SEARCH (Tavily)…' : 'Working: PLAN…');
   else if (e.kind === 'search') setStatus('run', 'Working: EXTRACT (Tavily)…');
   else if (e.kind === 'extract') setStatus('run', 'Working: PLAN…');
   else if (e.kind === 'plan') setStatus('run', 'Working: WRITE…');
   else if (e.kind === 'write') setStatus('run', e.files.length || e.unchanged?.length ? 'Working: TEST…' : 'Working: WRITE (asking again)…');
   else if (e.kind === 'test') setStatus('run', e.passed ? 'Working: RECEIPT…' : 'Working: WRITE (retrying)…');
+  else if (e.kind === 'done' && String(e.reason).startsWith('stopped')) setStatus('stop', 'Stopped. The receipt below shows what was spent.');
   else if (e.kind === 'done') setStatus(e.done ? 'done' : 'bad', e.done ? 'Finished: the tests pass. Receipt below.' : 'Finished: not done. Receipt below.');
   else if (e.kind === 'error') setStatus('bad', 'Stopped: ' + e.message);
 }
 
 const handlers = {
-  start: e => { jobType = e.type; card(`<span class="chip">${esc(e.type.toUpperCase())}</span> HIRED`, '', `<p>${esc(e.job)} · budget ${Math.round(e.budget * 100)}¢</p>`); },
+  queued: e => {
+    const text = e.position === 1 ? "Another visitor's job is running. You're next." : `Another visitor's job is running. ${e.position - 1} visitors are ahead of you.`;
+    if (queuedEl) queuedEl.querySelector('p').textContent = text; else queuedEl = card('IN LINE', 'note', `<p>${esc(text)}</p><p class="meta">Your job starts by itself when it is your turn. Press Stop to leave the line.</p>`);
+  },
+  start: e => { runId = e.id; if (queuedEl) { queuedEl.remove(); queuedEl = null; } jobType = e.type; card(`<span class="chip">${esc(e.type.toUpperCase())}</span> HIRED`, '', `<p>${esc(e.job)} · budget ${Math.round(e.budget * 100)}¢</p>`); },
   search: e => card('SEARCH · Tavily', '', `<p class="meta">“${esc(e.query)}” · ${e.credits} credit${e.credits === 1 ? '' : 's'}</p>` +
     (e.results.length ? `<p>${e.results.map(r => `<a href="${esc(r.url)}" rel="noopener" target="_blank">${esc(r.title || r.url)}</a>`).join('<br>')}</p>` : '<p>Nothing found.</p>')),
   extract: e => card('EXTRACT · Tavily', '', `<p class="meta">${e.chars.toLocaleString()} characters of release notes from <code>${esc(e.url)}</code> · ${e.credits} credit${e.credits === 1 ? '' : 's'}</p><p>PLAN and WRITE read them as reference data, not instructions.</p>`),
@@ -170,7 +181,8 @@ const handlers = {
     const top = Math.max(...calls.map(c => c.billed || 0), 1e-9);
     const routing = calls.length ? `<h3 style="margin-top:14px">ROUTING</h3><p class="meta">Which model each step asked for, which one it got, and what it cost.</p><table class="route">` +
       calls.map(c => { const got = c.booked || c.requested; return `<tr><td>${esc(c.label)}</td><td>${esc(pretty(c.requested))} → <b>${esc(pretty(got))}</b>${got !== c.requested ? ' <span class="ok">cheaper</span>' : ''}</td><td><div class="track"><div class="fill" style="width:${((c.billed || 0) / top * 100).toFixed(1)}%"></div></div></td><td>${usd(c.billed)}</td></tr>`; }).join('') + `</table>` : '';
-    card(e.done ? 'DONE' : 'NOT DONE', e.done ? 'st-ok' : 'st-bad', `<p>${esc(e.reason)}</p>${d}
+    const byVisitor = String(e.reason).startsWith('stopped');
+    card(e.done ? 'DONE' : byVisitor ? 'STOPPED' : 'NOT DONE', e.done ? 'st-ok' : byVisitor ? 'note' : 'st-bad', `<p>${byVisitor ? 'You stopped it. You were billed only for the steps that ran.' : esc(e.reason)}</p>${d}
       ${routing}
       <h3 style="margin-top:14px">RECEIPT</h3>
       <p class="meta">Billed is what Token Factory charged. The grey bar is what the same job would have cost if every step had used the model first requested. Saved is the difference.</p>
@@ -191,14 +203,22 @@ const handlers = {
   error: e => card('STOPPED', 'st-bad', `<p>${esc(e.message)}</p>`),
 };
 
+$('stop').onclick = async () => {
+  $('stop').disabled = true;
+  if (runId) {   // running: ask the server to stop before the next call; the receipt still arrives
+    setStatus('run', 'Stopping: the current step finishes, then it stops…');
+    fetch('/api/stop', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: runId }) }).catch(() => {});
+  } else ctl?.abort();   // still in line: leave the line
+};
+
 $('hire').onclick = async () => {
   const job = document.querySelector('input[name=job]:checked')?.value;
   $('run').innerHTML = '';
-  calls = [];
+  calls = []; runId = null; queuedEl = null; ctl = new AbortController();
   setStatus('run', 'Starting…');
-  $('hire').disabled = true;
+  $('hire').disabled = true; $('stop').hidden = false; $('stop').disabled = false;
   try {
-    const res = await fetch('/api/hire', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, budget: $('budget').value / 100 }) });
+    const res = await fetch('/api/hire', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, budget: $('budget').value / 100 }), signal: ctl.signal });
     if (!res.ok) { const e = await res.json(); setStatus(null); card('NOT NOW', 'note', `<p>${esc(e.error)}</p>`); return; }
     const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
     for (;;) {
@@ -211,8 +231,11 @@ $('hire').onclick = async () => {
         if (line.startsWith('data: ')) { const e = JSON.parse(line.slice(6)); handlers[e.kind]?.(e); progress(e); }
       }
     }
-  } catch { setStatus('bad', 'Stopped: lost the connection.'); card('STOPPED', 'st-bad', '<p>Lost the connection. Try again.</p>'); }
-  finally { if ($('status').classList.contains('run')) setStatus('bad', 'Stopped: the stream ended early.'); $('hire').disabled = false; }
+  } catch (err) {
+    if (err?.name === 'AbortError') { setStatus(null); if (queuedEl) { queuedEl.remove(); queuedEl = null; } }
+    else { setStatus('bad', 'Stopped: lost the connection.'); card('STOPPED', 'st-bad', '<p>Lost the connection. Try again.</p>'); }
+  }
+  finally { if ($('status').classList.contains('run')) setStatus('bad', 'Stopped: the stream ended early.'); $('hire').disabled = false; $('stop').hidden = true; runId = null; ctl = null; }
 };
 </script>
 </body>
