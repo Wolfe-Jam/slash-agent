@@ -113,7 +113,7 @@ Built small on purpose. Each piece has a clear next step at scale:
 |---|---|
 | Four preset jobs on two sample projects | Jobs on a team's own repositories, opened from issues or merge requests |
 | Tests on an isolated copy in the container | **Token Factory Sandboxes** for every run: isolated microVMs, checkpoint and branch to try fixes in parallel |
-| One job at a time, one instance | A queue (Cloud Tasks) feeding many workers |
+| One job at a time (up to 3 visitors wait in line), one instance | A queue (Cloud Tasks) feeding many workers |
 | A daily cap in a Cloud Storage file | Budgets per team and per project in a transactional store, with alerts |
 | One budget and one floor per job | Policies per team: which models, which quality floor, how much a month |
 | Receipts on the page | Receipts exported to **BigQuery**: spend and savings per team, per model, per month |
