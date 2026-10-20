@@ -28,14 +28,15 @@
   .lead { font-size:1.15rem; color:var(--muted); margin:0 0 28px; }
   h2 { font-size:1.15rem; margin:36px 0 12px; }
   .jobs { display:grid; gap:8px; }
-  .job { display:flex; gap:10px; align-items:center; padding:12px 14px; border:1px solid var(--line); border-left:6px solid var(--c, var(--line)); border-radius:10px; background:var(--card); cursor:pointer; }
+  .job { display:flex; gap:10px; align-items:center; padding:12px 14px; border:1px solid var(--line); border-radius:10px; background:var(--card); cursor:pointer; }
   .job input { accent-color:var(--c, var(--accent)); }
+  .job:has(input:checked) { border-color:var(--c, var(--accent)); }
   .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin:16px 0 0; }
   button { padding:10px 18px; border-radius:8px; border:1px solid var(--ink); background:var(--ink); color:var(--bg); font:inherit; font-weight:600; cursor:pointer; }
   button:disabled { opacity:.5; cursor:default; }
   input[type=range] { width:180px; accent-color:var(--accent); }
   .meta { color:var(--muted); font-size:14px; }
-  .step { background:var(--card); border:1px solid var(--line); border-left:6px solid var(--c, var(--line)); border-radius:10px; padding:14px 16px; margin:12px 0 0; }
+  .step { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin:12px 0 0; }
   .step h3 { margin:0 0 6px; font-size:1rem; letter-spacing:.06em; color:var(--c-ink, inherit); }
   .step.st-ok { --c:var(--ok); --c-ink:var(--ok); } .step.st-bad { --c:var(--bad); --c-ink:var(--bad); }
   .ticks { display:flex; justify-content:space-between; width:180px; font-size:12px; color:var(--muted); margin-left:58px; }
