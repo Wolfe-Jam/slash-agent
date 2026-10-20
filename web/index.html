@@ -28,14 +28,15 @@
   .lead { font-size:1.15rem; color:var(--muted); margin:0 0 28px; }
   h2 { font-size:1.15rem; margin:36px 0 12px; }
   .jobs { display:grid; gap:8px; }
-  .job { display:flex; gap:10px; align-items:center; padding:12px 14px; border:1px solid var(--line); border-left:6px solid var(--c, var(--line)); border-radius:10px; background:var(--card); cursor:pointer; }
+  .job { display:flex; gap:10px; align-items:center; padding:12px 14px; border:1px solid var(--line); border-radius:10px; background:var(--card); cursor:pointer; }
   .job input { accent-color:var(--c, var(--accent)); }
+  .job:has(input:checked) { border-color:var(--c, var(--accent)); }
   .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin:16px 0 0; }
   button { padding:10px 18px; border-radius:8px; border:1px solid var(--ink); background:var(--ink); color:var(--bg); font:inherit; font-weight:600; cursor:pointer; }
   button:disabled { opacity:.5; cursor:default; }
   input[type=range] { width:180px; accent-color:var(--accent); }
   .meta { color:var(--muted); font-size:14px; }
-  .step { background:var(--card); border:1px solid var(--line); border-left:6px solid var(--c, var(--line)); border-radius:10px; padding:14px 16px; margin:12px 0 0; }
+  .step { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin:12px 0 0; }
   .step h3 { margin:0 0 6px; font-size:1rem; letter-spacing:.06em; color:var(--c-ink, inherit); }
   .step.st-ok { --c:var(--ok); --c-ink:var(--ok); } .step.st-bad { --c:var(--bad); --c-ink:var(--bad); }
   .ticks { display:flex; justify-content:space-between; width:180px; font-size:12px; color:var(--muted); margin-left:58px; }
@@ -45,6 +46,7 @@
   table { border-collapse:collapse; font-size:14px; margin-top:8px; }
   td, th { border-bottom:1px solid var(--line); padding:6px 10px 6px 0; text-align:left; }
   code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.9em; }
+  .why { margin:0 0 10px; } .flow { margin:0 0 4px; }
   footer { margin-top:48px; color:var(--muted); font-size:14px; }
   a { color:var(--accent); }
 </style>
@@ -53,7 +55,10 @@
 <main>
   <h1>Hire the agent</h1>
   <p class="lead">A coding agent you hire with a budget. It quotes the job, books the right NVIDIA Nemotron model on Nebius Token Factory for each step, and proves the cost with a receipt.</p>
+  <p class="why"><b>Why:</b> coding agents spend frontier-model tokens on steps a smaller model could do, and the bill arrives after the work. Here the price comes first, and the receipt shows what was billed against what the same job would have cost on the models first asked for.</p>
 
+  <p class="flow"><b>What happens when you click Hire:</b> Quote → Search (upgrades only) → Plan → Write → Test → Receipt. Plan runs on Nemotron 3 Ultra, Write on the smallest Nemotron that is good enough, and Test runs the project's own tests on a copy.</p>
+  <p class="meta"><a href="https://youtu.be/8arML8kAKts" rel="noopener" target="_blank">New here? Watch the 2-minute video.</a></p>
   <h2>The project</h2>
   <p class="meta">A small shop: a cart, where <code>total()</code> adds up items, a percentage coupon and shipping, and a checkout, where <code>validateCart()</code> checks orders with Zod 3. Both have tests. The agent works on a copy; nothing is kept.</p>
 
@@ -64,6 +69,7 @@
       <div class="ticks"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div></div>
     <button id="hire">Hire</button>
   </div>
+  <p class="meta">Every run is real and billed by Token Factory. It takes seconds to about a minute and costs a few cents. The jobs are presets on a sample project for now.</p>
   <p class="meta" id="daily"></p>
 
   <div id="run"></div>
@@ -84,8 +90,10 @@ const usd = n => n == null ? '–' : '$' + Number(n).toFixed(6);
 $('budget').oninput = () => { $('budgetLabel').textContent = $('budget').value + '¢'; };
 
 fetch('/api/jobs').then(r => r.json()).then(({ jobs, dailyCap, spentToday, upgradeCap, upgradesToday }) => {
-  $('jobs').innerHTML = jobs.map((j, i) =>
-    `<label class="job t-${esc(j.type)}"><input type="radio" name="job" value="${esc(j.id)}" ${i === 0 ? 'checked' : ''}> <span class="chip">${esc(j.type.toUpperCase())}</span> ${esc(j.title.replace(/^\w+:\s*/, ''))}</label>`).join('');
+  const pick = jobs.find(j => j.type === 'upgrade') ?? jobs[0];
+  if (pick?.type === 'upgrade') { $('budget').value = 3; $('budgetLabel').textContent = '3¢'; }
+  $('jobs').innerHTML = jobs.map(j =>
+    `<label class="job t-${esc(j.type)}"><input type="radio" name="job" value="${esc(j.id)}" ${j === pick ? 'checked' : ''}> <span class="chip">${esc(j.type.toUpperCase())}</span> ${esc(j.title.replace(/^\w+:\s*/, ''))}</label>`).join('');
   $('daily').textContent = `Demo spend today: $${spentToday.toFixed(4)} of the $${dailyCap.toFixed(2)} daily cap.` +
     (jobs.some(j => j.type === 'upgrade') ? ` Upgrade runs today: ${upgradesToday} of ${upgradeCap}.` : '');
 });
@@ -119,6 +127,7 @@ const handlers = {
     const r = e.receipt;
     card(e.done ? 'DONE' : 'NOT DONE', e.done ? 'st-ok' : 'st-bad', `<p>${esc(e.reason)}</p>${d}
       <h3 style="margin-top:14px">RECEIPT</h3>
+      <p class="meta">Billed is what Token Factory charged. “On the models asked for” is what the same job would have cost on the model first requested. Saved is the difference.</p>
       <table>
         <tr><td>Billed by Token Factory</td><td><b>${usd(r.spent)}</b></td></tr>
         <tr><td>On the models asked for</td><td>${usd(r.baseline)}</td></tr>
