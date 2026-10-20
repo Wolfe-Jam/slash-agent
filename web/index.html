@@ -64,11 +64,40 @@
   .fill { height:100%; background:var(--accent); border-radius:6px; } .fill.base { background:var(--muted); }
   table.route td { vertical-align:middle; } table.route .track { min-width:90px; }
   @media (max-width:560px) { .bar { flex-wrap:wrap; } .bar > span { flex-basis:100%; } }
+  .help { position:fixed; top:14px; right:14px; z-index:5; width:38px; height:38px; padding:0; border-radius:50%; font-size:19px; line-height:1; background:var(--card); color:var(--ink); border:1px solid var(--line); box-shadow:0 1px 4px rgba(0,0,0,.12); }
+  dialog#basics { width:min(600px, calc(100vw - 32px)); max-height:calc(100vh - 48px); overflow:auto; padding:22px 24px; border:1px solid var(--line); border-radius:14px; background:var(--card); color:var(--ink); }
+  dialog#basics::backdrop { background:rgba(0,0,0,.45); }
+  dialog#basics h2 { margin:0 0 12px; } dialog#basics h3 { margin:16px 0 2px; font-size:1rem; } dialog#basics p { margin:0; }
+  dialog#basics form.x { position:absolute; top:8px; right:10px; margin:0; } dialog#basics form.x button { background:transparent; color:var(--ink); border:0; font-size:26px; line-height:1; padding:4px 10px; }
+  dialog#basics .links { display:flex; gap:16px; flex-wrap:wrap; margin-top:18px; } dialog#basics form { margin-top:18px; text-align:right; }
   footer { margin-top:48px; color:var(--muted); font-size:14px; }
   a { color:var(--accent); }
 </style>
 </head>
 <body>
+<button id="help" class="help" type="button" aria-label="What is this? The basics" title="The basics">?</button>
+<dialog id="basics" aria-labelledby="basicsTitle">
+  <form method="dialog" class="x"><button aria-label="Close">×</button></form>
+  <h2 id="basicsTitle">The basics</h2>
+  <h3>What is it?</h3>
+  <p>A coding agent you hire with a budget. It quotes the job, books the right NVIDIA Nemotron model for each step on Nebius Token Factory, runs the project's own tests, and hands back a receipt.</p>
+  <h3>Why?</h3>
+  <p>Coding agents spend frontier-model tokens on steps a smaller model could do, and the bill arrives after the work. Here the price comes first.</p>
+  <h3>How do I try it?</h3>
+  <p>Pick a job, set a budget of 1 to 5 cents, and click Hire. The Upgrade job shows every step.</p>
+  <h3>Is it real?</h3>
+  <p>Yes. Every run calls Token Factory (and Tavily, for Upgrade), runs real tests on a copy, and is really billed. A daily cap protects the demo.</p>
+  <h3>What are the limits?</h3>
+  <p>Four preset jobs on two sample projects (the cart and the checkout, in <code>examples/</code>). One job runs at a time; up to 3 visitors wait in line. Nothing you do changes the project.</p>
+  <h3>How do I read the receipt?</h3>
+  <p><b>Billed</b> is what Token Factory charged. The grey bar is what the same job would have cost if every step had used the model first requested. <b>Saved</b> is the difference.</p>
+  <div class="links">
+    <a href="https://github.com/Wolfe-Jam/slash-agent" rel="noopener" target="_blank">Source code and README</a>
+    <a href="https://github.com/Wolfe-Jam/slash-agent/tree/main/examples" rel="noopener" target="_blank">The examples</a>
+    <a href="https://youtu.be/8arML8kAKts" rel="noopener" target="_blank">The video</a>
+  </div>
+  <form method="dialog"><button>Close</button></form>
+</dialog>
 <main>
   <h1>Hire the agent</h1>
   <p class="lead">A coding agent you hire with a budget. It quotes the job, books the right NVIDIA Nemotron model on Nebius Token Factory for each step, and proves the cost with a receipt.</p>
@@ -202,6 +231,9 @@ const handlers = {
   },
   error: e => card('STOPPED', 'st-bad', `<p>${esc(e.message)}</p>`),
 };
+
+$('help').onclick = () => $('basics').showModal();
+$('basics').addEventListener('click', e => { if (e.target === $('basics')) $('basics').close(); });   // a click outside closes it
 
 $('stop').onclick = async () => {
   $('stop').disabled = true;
