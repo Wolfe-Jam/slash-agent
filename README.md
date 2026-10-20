@@ -93,6 +93,7 @@ An upgrade needs today's release notes, not a model's memory. **Upgrade: move th
 - **PLAN and WRITE** read the notes as labelled reference data, never as instructions. The plan cites them ("`.errors` dropped in Zod 4, use `.issues`").
 - **TEST** runs `bun install --ignore-scripts` on the copy first. The agent may change versions of the packages already there, never add one.
 - **RECEIPT** adds a TAVILY section: searches, extracts and Tavily's own credit count.
+  The count is what Tavily's responses report: 1 credit a run, from the search; the extract response shows 0. Tavily's team confirmed that is expected for `/extract`. Real usage is on their account `/usage` endpoint, after a short delay.
 
 The query comes from the preset job, never from a visitor. If the search finds nothing, the job stops before any model call. In our live runs with this setup (2026-10-14) it passed 4 of 5, one of them after an ITERATE round, for $0.007 to $0.020 on the models plus 1 Tavily credit a run. The miss ran out of rounds with the tests still failing, and its receipt said so.
 
