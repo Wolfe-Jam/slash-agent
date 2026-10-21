@@ -277,12 +277,18 @@ export async function runJob(opts: JobOptions): Promise<JobResult> {
     const t = opts.tavily ?? tavilyClient();
     const q = opts.research;
     research = { searches: 0, extracts: 0, credits: 0, cost: 0 };
-    const found = await t.search(q.query, { includeDomains: q.includeDomains });
+    let found = await t.search(q.query, { includeDomains: q.includeDomains });
     research.searches++; research.credits += found.credits;
+    if (!found.results.length) {
+      // Tavily sometimes answers a good query with nothing (and still charges the credit): ask once more.
+      log('search  nothing found: asking once more');
+      found = await t.search(q.query, { includeDomains: q.includeDomains });
+      research.searches++; research.credits += found.credits;
+    }
     log(`search  ${found.results.length} results`);
     emit({ kind: 'search', query: q.query, results: found.results, credits: found.credits });
     const top = found.results[0];
-    if (!top) return finish(false, 'research found nothing: no model was called');
+    if (!top) return finish(false, 'research found nothing after two tries: no model was called');
     if (stopRequested()) return stopped();
     const page = await t.extract(top.url, { query: q.extractQuery });
     research.extracts++; research.credits += page.credits;
