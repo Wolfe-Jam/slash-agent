@@ -47,16 +47,22 @@
   td, th { border-bottom:1px solid var(--line); padding:6px 10px 6px 0; text-align:left; }
   code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.9em; }
   .why { margin:0 0 10px; } .flow { margin:0 0 4px; }
-  .status { display:flex; align-items:center; gap:8px; margin:14px 0 0; font-size:15px; font-weight:600; }
+  .status { margin:14px 0 0; font-size:15px; font-weight:600; --c:var(--accent); }
+  .status .line { display:flex; align-items:center; gap:8px; margin-top:8px; }
+  .status progress { display:block; width:280px; max-width:100%; height:10px; border:0; border-radius:5px; background:var(--line); overflow:hidden; appearance:none; -webkit-appearance:none; }
+  .status progress::-webkit-progress-bar { background:var(--line); border-radius:5px; }
+  .status progress::-webkit-progress-value { background:var(--c); border-radius:5px; transition:width .4s ease; }
+  .status progress::-moz-progress-bar { background:var(--c); border-radius:5px; }
   .status[hidden] { display:none; }
-  .status .dot { width:11px; height:11px; border-radius:50%; background:var(--accent); flex:none; }
+  .status .dot { width:11px; height:11px; border-radius:50%; background:var(--c); flex:none; }
   .status.run .dot { animation:pulse 1s ease-in-out infinite; }
-  .status.done { color:var(--ok); } .status.done .dot { background:var(--ok); }
-  .status.bad { color:var(--bad); } .status.bad .dot { background:var(--bad); }
-  .status.stop { color:var(--muted); } .status.stop .dot { background:var(--muted); }
+  .status.done { --c:var(--ok); color:var(--ok); }
+  .status.bad { --c:var(--bad); color:var(--bad); }
+  .status.stop { --c:var(--muted); color:var(--muted); }
   button.secondary { background:transparent; color:var(--ink); }
+  #stop { color:var(--bad); border-color:var(--bad); }
   @keyframes pulse { 0%,100% { opacity:.25; } 50% { opacity:1; } }
-  @media (prefers-reduced-motion: reduce) { .status.run .dot { animation:none; } }
+  @media (prefers-reduced-motion: reduce) { .status.run .dot { animation:none; } .status progress::-webkit-progress-value { transition:none; } }
   .bars { margin:10px 0 4px; font-size:14px; }
   .bar { display:flex; align-items:center; gap:10px; margin:5px 0; }
   .bar > span { flex:0 0 230px; } .bar > b { flex:0 0 84px; text-align:right; font-variant-numeric:tabular-nums; }
@@ -116,7 +122,7 @@
     <button id="hire">Hire</button>
     <button id="stop" class="secondary" hidden>Stop</button>
   </div>
-  <div id="status" class="status" role="status" aria-live="polite" hidden><span class="dot"></span><span id="statusText"></span></div>
+  <div id="status" class="status" hidden><progress id="prog" max="5" value="0" aria-label="Job progress"></progress><div class="line" role="status" aria-live="polite"><span class="dot"></span><span id="statusText"></span></div></div>
   <p class="meta">Every run is real and billed by Token Factory. It takes seconds to about a minute and costs a few cents. The jobs are presets on a sample project for now.</p>
   <p class="meta" id="daily"></p>
 
@@ -167,28 +173,31 @@ const pretty = id => PRETTY[id] ?? id ?? '–';
 let runId = null, ctl = null, queuedEl = null;   // this run's id (to stop it), its connection, and the "in line" card
 let calls = [];   // every model call this run: what it asked for, what it got, what it cost
 
-function setStatus(state, text) {
+let steps = 5, stepsDone = 0;   // the bar counts finished steps: Upgrade has 5 (SEARCH, EXTRACT, PLAN, WRITE, TEST), the other jobs 3
+function setStatus(state, text, done) {
   const el = $('status');
   el.hidden = !state; el.className = 'status' + (state ? ' ' + state : '');
+  if (done !== undefined) stepsDone = done;
+  $('prog').max = steps; $('prog').value = stepsDone;
   $('statusText').textContent = text || '';
 }
 // After each event, say what is running now (or that it has finished).
 function progress(e) {
-  if (e.kind === 'queued') setStatus('run', e.position === 1 ? 'Waiting: you are next in line…' : `Waiting: ${e.position - 1} visitors ahead of you…`);
-  else if (e.kind === 'start') setStatus('run', e.type === 'upgrade' ? 'Working: SEARCH (Tavily)…' : 'Working: PLAN…');
-  else if (e.kind === 'search') setStatus('run', 'Working: EXTRACT (Tavily)…');
-  else if (e.kind === 'extract') setStatus('run', 'Working: PLAN…');
-  else if (e.kind === 'plan') setStatus('run', 'Working: WRITE…');
-  else if (e.kind === 'write') setStatus('run', e.files.length || e.unchanged?.length ? 'Working: TEST…' : 'Working: WRITE (asking again)…');
-  else if (e.kind === 'test') setStatus('run', e.passed ? 'Working: RECEIPT…' : 'Working: WRITE (retrying)…');
+  if (e.kind === 'queued') { steps = 5; setStatus('run', e.position === 1 ? 'Waiting: you are next in line…' : `Waiting: ${e.position - 1} visitor${e.position === 2 ? '' : 's'} ahead of you…`, 0); }
+  else if (e.kind === 'start') { steps = e.type === 'upgrade' ? 5 : 3; setStatus('run', e.type === 'upgrade' ? 'Working: SEARCH (Tavily)…' : 'Working: PLAN…', 0); }
+  else if (e.kind === 'search') setStatus('run', 'Working: EXTRACT (Tavily)…', 1);
+  else if (e.kind === 'extract') setStatus('run', 'Working: PLAN…', 2);
+  else if (e.kind === 'plan') setStatus('run', 'Working: WRITE…', steps - 2);
+  else if (e.kind === 'write') setStatus('run', e.files.length || e.unchanged?.length ? 'Working: TEST…' : 'Working: WRITE (asking again)…', e.files.length || e.unchanged?.length ? steps - 1 : undefined);
+  else if (e.kind === 'test') setStatus('run', e.passed ? 'Working: RECEIPT…' : 'Working: WRITE (retrying)…', e.passed ? steps : undefined);   // a retry never moves the bar back
   else if (e.kind === 'done' && String(e.reason).startsWith('stopped')) setStatus('stop', 'Stopped. The receipt below shows what was spent.');
-  else if (e.kind === 'done') setStatus(e.done ? 'done' : 'bad', e.done ? 'Finished: the tests pass. Receipt below.' : 'Finished: not done. Receipt below.');
+  else if (e.kind === 'done') setStatus(e.done ? 'done' : 'bad', e.done ? 'Finished: the tests pass. Receipt below.' : 'Finished: not done. Receipt below.', e.done ? steps : undefined);
   else if (e.kind === 'error') setStatus('bad', 'Stopped: ' + e.message);
 }
 
 const handlers = {
   queued: e => {
-    const text = e.position === 1 ? "Another visitor's job is running. You're next." : `Another visitor's job is running. ${e.position - 1} visitors are ahead of you.`;
+    const text = e.position === 1 ? "Another visitor's job is running. You're next." : `Another visitor's job is running. ${e.position - 1} ${e.position === 2 ? 'visitor is' : 'visitors are'} ahead of you.`;
     if (queuedEl) queuedEl.querySelector('p').textContent = text; else queuedEl = card('IN LINE', 'note', `<p>${esc(text)}</p><p class="meta">Your job starts by itself when it is your turn. Press Stop to leave the line.</p>`);
   },
   start: e => { runId = e.id; if (queuedEl) { queuedEl.remove(); queuedEl = null; } jobType = e.type; card(`<span class="chip">${esc(e.type.toUpperCase())}</span> HIRED`, '', `<p>${esc(e.job)} · budget ${Math.round(e.budget * 100)}¢</p>`); },
