@@ -34,7 +34,7 @@ const ALL_JOBS = [
   {
     id: 'zod-4', project: 'checkout', type: 'upgrade', title: 'Upgrade: move the checkout from Zod 3 to Zod 4',
     task: "Upgrade zod from version 3 to the latest 4.x: change its version in package.json and update src/validate.ts for Zod 4's breaking changes. Every error message must stay exactly as the tests expect. Don't change the tests.",
-    research: { query: 'Zod 4 migration guide breaking changes', includeDomains: ['zod.dev'] },
+    research: { query: 'Zod 4 migration guide breaking changes', includeDomains: ['zod.dev'], extractQuery: 'breaking changes: removed or renamed APIs, error customization, ZodError' },
   },
 ] as const;
 
