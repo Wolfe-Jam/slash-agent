@@ -78,9 +78,28 @@ describe('runJob() with research', () => {
       callFor: () => (async () => { modelCalls++; return { output: '', usage: { prompt_tokens: 1, completion_tokens: 1 } }; }) as CallModel,
     });
     expect(r.done).toBe(false);
-    expect(r.reason).toBe('research found nothing: no model was called');
+    expect(r.reason).toBe('research found nothing after two tries: no model was called');
     expect(modelCalls).toBe(0);
-    expect(r.session).toMatchObject({ calls: 0, spent: 0, research: { searches: 1, extracts: 0, credits: 1 } });
+    expect(calls).toEqual(['search nothing here', 'search nothing here']);
+    expect(r.session).toMatchObject({ calls: 0, spent: 0, research: { searches: 2, extracts: 0, credits: 2 } });
+  });
+
+  it('asks the search once more when it comes back empty, and carries on if the second answer has results', async () => {
+    const calls: string[] = [];
+    const stub = stubTavily(true, calls);
+    const search = stub.search; let first = true;
+    stub.search = async (q, o) => { if (first) { first = false; calls.push(`search ${q}`); return { results: [], credits: 1 }; } return search(q, o); };
+    const replies = ['1. Use .issues.', '=== FILE: src/validate.ts ===\nexport {};\n=== END ==='];
+    const r = await runJob({
+      projectDir: CHECKOUT, task: 'Upgrade zod to 4.', budget: 0.05,
+      research: { query: 'Zod 4 migration guide' },
+      tavily: stub,
+      callFor: () => (async () => ({ output: replies.shift() ?? '', usage: { prompt_tokens: 200, completion_tokens: 200 } })) as CallModel,
+      runTests: () => ({ passed: true, output: '' }),
+    });
+    expect(r.done).toBe(true);
+    expect(calls).toEqual(['search Zod 4 migration guide', 'search Zod 4 migration guide', 'extract https://zod.dev/v4/changelog']);
+    expect(r.session.research).toEqual({ searches: 2, extracts: 1, credits: 3, cost: 3 * TAVILY_CREDIT_USD });
   });
 
   it('a job without research has no research line on the receipt', async () => {
