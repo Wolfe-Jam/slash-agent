@@ -88,6 +88,12 @@ receipt.saved     // dollars saved against Ultra
 - **Rate limits respected.** 429s and 5xx retry with `Retry-After` or backoff.
 - **Sandboxes next.** Beta access is requested; TEST will run in Token Factory Sandboxes (isolated microVMs, checkpoint and branch for ITERATE). Today it runs on an isolated copy inside the demo's container.
 
+## Where Token Factory accelerated our workflow
+
+- **One API, four Nemotron models.** Token Factory is OpenAI-compatible, so the client is a plain fetch call. Choosing a different model for a step is a change of the model ID, not a new integration. That is what lets each step book the cheapest model its quality floor allows: Ultra to plan, Super to write.
+- **Usage on every reply.** Each response returns its token counts, so every call is checked against its quote and the receipt shows what Token Factory billed, with no separate billing export.
+- **Cents, not dollars, per run.** The whole loop (plan, write, test, retry) fits a budget of 1 to 5 cents, so we could build and test it with live runs instead of mock data.
+
 ## The Upgrade job: Tavily for what models can't know
 
 An upgrade needs today's release notes, not a model's memory. **Upgrade: move the checkout from Zod 3 to Zod 4** works on [`examples/checkout`](examples/checkout), where `validateCart()` uses Zod 3 and tests pin its error messages. Zod 4 breaks it twice: `error.errors` is gone, and `required_error` / `invalid_type_error` are silently dropped, so the messages change.
