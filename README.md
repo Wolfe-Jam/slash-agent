@@ -1,5 +1,7 @@
 # slash-agent
 
+<img src="docs/slash-the-evaluator.png" alt="Slash the Evaluator, the mascot" width="150" align="right">
+
 **Hire a coding agent with a budget.** It quotes the job, books the right NVIDIA Nemotron model on Nebius Token Factory for each step, does the work, and hands you a receipt that matches the bill.
 
 **[Try it live: Hire the agent](https://agent-web-524037477356.us-central1.run.app)** · Nebius x NVIDIA Global AI Hackathon (Coding and Agentic Engineering) · MIT
