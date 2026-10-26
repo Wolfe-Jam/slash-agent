@@ -1,5 +1,7 @@
 # slash-agent
 
+<img src="docs/slash-the-evaluator.png" alt="Slash the Evaluator, the mascot" width="150" align="right">
+
 **Hire a coding agent with a budget.** It quotes the job, books the right NVIDIA Nemotron model on Nebius Token Factory for each step, does the work, and hands you a receipt that matches the bill.
 
 **[Try it live: Hire the agent](https://agent-web-524037477356.us-central1.run.app)** · Nebius x NVIDIA Global AI Hackathon (Coding and Agentic Engineering) · MIT
@@ -23,7 +25,7 @@ One budget covers the whole job. Your project is never changed: the agent works 
 
 **[Hire the agent](https://agent-web-524037477356.us-central1.run.app)**: pick one of four jobs on a small shop, set a budget of 1 to 5 cents, click **Hire**, and watch each step live. Every run is a real job on Token Factory.
 
-**[Watch the 2-minute video](https://youtu.be/8arML8kAKts)**: a narrated walk-through of a live run.
+**[Watch the 2-minute video](https://youtu.be/8CL-BsbpQUk)**: a narrated walk-through of a live run.
 
 A live run on the demo (2026-10-14):
 
@@ -86,6 +88,43 @@ receipt.saved     // dollars saved against Ultra
 - **Rate limits respected.** 429s and 5xx retry with `Retry-After` or backoff.
 - **Sandboxes next.** Beta access is requested; TEST will run in Token Factory Sandboxes (isolated microVMs, checkpoint and branch for ITERATE). Today it runs on an isolated copy inside the demo's container.
 
+## Where Token Factory accelerated our workflow
+
+- **One API, four Nemotron models.** Token Factory is OpenAI-compatible, so the client is a plain fetch call. Choosing a different model for a step is a change of the model ID, not a new integration. That is what lets each step book the cheapest model its quality floor allows: Ultra to plan, Super to write.
+- **Usage on every reply.** Each response returns its token counts, so every call is checked against its quote and the receipt shows what Token Factory billed, with no separate billing export.
+- **Cents, not dollars, per run.** The whole loop (plan, write, test, retry) fits a budget of 1 to 5 cents, so we could build and test it with live runs instead of mock data.
+
+## Use these tools yourself
+
+You don't need slash-agent to try any of this.
+
+**Token Factory + Nemotron.** The API is OpenAI-compatible, so a plain request works:
+
+```bash
+curl https://api.tokenfactory.nebius.com/v1/chat/completions \
+  -H "Authorization: Bearer $NEBIUS_API_KEY" -H "Content-Type: application/json" \
+  -d '{"model": "nvidia/nemotron-3-super-120b-a12b",
+       "messages": [{"role": "user", "content": "Reply with one word: ready"}],
+       "max_tokens": 20,
+       "chat_template_kwargs": {"enable_thinking": false}}'
+```
+
+- **Reasoning is on by default and billed as output.** `enable_thinking: false` turns it off; the reply's `usage` then shows `reasoning_tokens: 0`.
+- **`usage` is on every reply.** Compare it with your invoice to check each call.
+- **Four models, one tokenizer:** `nvidia/Nemotron-3-Ultra-550b-a55b`, `nvidia/nemotron-3-super-120b-a12b`, `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`, `nvidia/Nemotron-3_5-Lightning`. To count tokens before a call, use NVIDIA's tokenizer from Hugging Face. Expect about 16 extra tokens of framing on a one-message request.
+
+**Tavily.** Search first, then extract the best result:
+
+```bash
+curl https://api.tavily.com/search -H "Authorization: Bearer $TAVILY_API_KEY" -H "Content-Type: application/json" \
+  -d '{"query": "Zod 4 migration guide breaking changes", "search_depth": "basic", "max_results": 3, "include_domains": ["zod.dev"], "include_usage": true}'
+
+curl https://api.tavily.com/extract -H "Authorization: Bearer $TAVILY_API_KEY" -H "Content-Type: application/json" \
+  -d '{"urls": ["<a url from the search>"], "extract_depth": "basic", "include_usage": true}'
+```
+
+An extract response reports 0 credits; Tavily's team confirmed that is expected. Your account's `/usage` endpoint shows real usage, after a short delay.
+
 ## The Upgrade job: Tavily for what models can't know
 
 An upgrade needs today's release notes, not a model's memory. **Upgrade: move the checkout from Zod 3 to Zod 4** works on [`examples/checkout`](examples/checkout), where `validateCart()` uses Zod 3 and tests pin its error messages. Zod 4 breaks it twice: `error.errors` is gone, and `required_error` / `invalid_type_error` are silently dropped, so the messages change.
@@ -125,17 +164,19 @@ This repository was created on 2026-10-10. Everything in it is new work for the 
 
 | | Baseline (before this repo) | Measured by |
 |---|---|---|
-| Engine | slash-tokens **1.6.6** (2026-10-07): per-call token estimates and same-provider routing | npm, tag `v1.6.6` |
+| Engine | slash-tokens **1.6.5** (2026-08-25, the last version before the hackathon opened): per-call token estimates and same-provider routing | npm, version `1.6.5` |
 | Agent loop | none, it was a library you call | — |
 | Nemotron | not supported | — |
 
 **Since then:**
 
-- **slash-tokens 1.7.0 → 1.8.1** (Oct 9–11): `quote()`, `decide()`, `reconcile()` and `hire().run()`; the four Nemotron models with exact prices, context windows and IDs; request framing measured on real Token Factory bills; each call capped at its own quote.
+- **slash-tokens 1.6.6 → 1.8.1** (Oct 7–11): `quote()`, `decide()`, `reconcile()` and `hire().run()`; the four Nemotron models with exact prices, context windows and IDs; request framing measured on real Token Factory bills; each call capped at its own quote.
 - **slash-agent 0.1 → 0.2** (Oct 10): the Token Factory client, then the full loop on the sample project.
 - **Hire the agent** (Oct 14): the live demo on Google Cloud Run.
 - **The Upgrade job** (Oct 14): Tavily search and extract before PLAN, on a Zod 3 → 4 upgrade.
 - **Fixes found by live runs** (Oct 14–16): files the model sends back unchanged are no longer counted as changes; when PLAN spends its whole output cap on reasoning, it plans once more with reasoning off (the PLAN card shows **↻ reasoning off**).
+- **Judges' feedback, from the Oct 20 live review** (Oct 20–21): the first screen explains itself and a **?** button opens the basics; a live progress line and bar; a baseline on the receipt ("Same job, all on Nemotron 3 Ultra") and a ROUTING view; a short queue instead of "another visitor's job is running"; a **Stop** button that halts before the next call.
+- **Upgrade job fixes** (Oct 20–21): ask Tavily for the relevant parts of the changelog, and ask the search once more when it answers with nothing.
 
 ## Feedback on Nebius Token Factory and NVIDIA Nemotron
 
@@ -147,7 +188,7 @@ We built slash-agent on Token Factory from Oct 10 to Oct 29: a coding agent that
 - **Usage on every response.** Every reply carries `usage`, including `prompt_cache_hit_tokens`, so we could reconcile each call to the bill. Our receipts never came in under the bill across our test runs.
 - **Rate limits that grow with you.** Limits scale up automatically (up to 20×) when usage nears them, and 429s carry `Retry-After`, so polite retries were easy.
 - **Cheap enough to demo for real.** A full plan → write → test job costs about $0.003; a public demo with a $0.50 daily cap can run for months on the hackathon credit.
-- **Nemotron quality at the small end.** Nemotron 3 Super wrote correct code and tests in round 1 on every job in our demo, at about a third of Ultra's cost for that step.
+- **Nemotron quality at the small end.** Nemotron 3 Super passed the project's tests in round 1 in our runs, at about a third of Ultra's cost for that step. Some runs needed a retry; the receipt shows each round.
 
 ### What would help
 
