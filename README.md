@@ -25,7 +25,7 @@ One budget covers the whole job. Your project is never changed: the agent works 
 
 **[Hire the agent](https://agent-web-524037477356.us-central1.run.app)**: pick one of four jobs on a small shop, set a budget of 1 to 5 cents, click **Hire**, and watch each step live. Every run is a real job on Token Factory.
 
-**[Watch the 2-minute video](https://youtu.be/8CL-BsbpQUk)**: a narrated walk-through of a live run.
+**[Watch the 2-minute video](https://youtu.be/7WL6S5KXoj4)**: a narrated walk-through of a live run.
 
 A live run on the demo (2026-10-14):
 
