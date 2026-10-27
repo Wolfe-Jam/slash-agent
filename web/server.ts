@@ -25,6 +25,7 @@ const BUCKET = process.env.SPEND_BUCKET; // unset locally: spend is counted in m
 const EXAMPLES = join(import.meta.dir, '../examples');
 const PAGE = readFileSync(join(import.meta.dir, 'index.html'), 'utf8');
 const DESIGN = readFileSync(join(import.meta.dir, 'design.html'), 'utf8');
+const SLASH = readFileSync(join(import.meta.dir, 'slash.png'));
 
 /** Job types and their colours: see docs/design/job-colours.md and /design. */
 const ALL_JOBS = [
@@ -204,6 +205,7 @@ export const server = {
     const { pathname } = new URL(req.url);
     if (req.method === 'GET' && pathname === '/') return new Response(PAGE, { headers: { ...headers, 'content-type': 'text/html; charset=utf-8' } });
     if (req.method === 'GET' && pathname === '/health') return new Response('ok');
+    if (req.method === 'GET' && pathname === '/slash.png') return new Response(SLASH, { headers: { ...headers, 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' } });
     if (req.method === 'GET' && pathname === '/design') return new Response(DESIGN, { headers: { ...headers, 'content-type': 'text/html; charset=utf-8' } });
     if (req.method === 'GET' && pathname === '/api/jobs') {
       const day = await readDay().catch(() => ({ spent: 0, upgrades: 0 }));

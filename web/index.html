@@ -25,6 +25,7 @@
   body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
   main { max-width:760px; margin:0 auto; padding:40px 16px 64px; }
   h1 { font-size:2rem; line-height:1.2; margin:0 0 8px; }
+  .hero { display:flex; align-items:center; gap:14px; margin:0 0 8px; } .hero h1 { margin:0; } .hero img { flex:none; width:84px; height:84px; object-fit:contain; }
   .lead { font-size:1.15rem; color:var(--muted); margin:0 0 28px; }
   h2 { font-size:1.15rem; margin:36px 0 12px; }
   .jobs { display:grid; gap:8px; }
@@ -105,7 +106,7 @@
   <form method="dialog"><button>Close</button></form>
 </dialog>
 <main>
-  <h1>Hire the agent</h1>
+  <div class="hero"><img src="/slash.png" alt="Slash the Evaluator, the mascot" width="84" height="84"><h1>Hire the agent</h1></div>
   <p class="lead">A coding agent you hire with a budget. It quotes the job, books the right NVIDIA Nemotron model on Nebius Token Factory for each step, and proves the cost with a receipt.</p>
   <p class="why"><b>Why:</b> coding agents spend frontier-model tokens on steps a smaller model could do, and the bill arrives after the work. Here the price comes first, and the receipt shows what was billed against what the same job would have cost on the models first asked for.</p>
 
